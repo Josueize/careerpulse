@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
+import { subscribeToJobs, addJob, deleteJob, updateJob, saveCoverLetter, subscribeToCoverLetters, deleteCoverLetter, saveResumeScore, subscribeToResumeScores } from "./db";
 
 const C = {
   bg: "#0A0E1A", card: "#111827", cardBorder: "#1E2D45",
@@ -91,7 +92,7 @@ function AIChat({ systemPrompt, placeholder, height=320 }) {
     const userMsg = {role:"user",content:input.trim()};
     setMessages(p=>[...p,userMsg]); setInput(""); setLoading(true);
     try {
-      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:systemPrompt,messages:[...messages,userMsg].map(m=>({role:m.role,content:m.content}))})});
+      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:systemPrompt,messages:[...messages,userMsg].map(m=>({role:m.role,content:m.content}))})});
       const data = await res.json();
       setMessages(p=>[...p,{role:"assistant",content:data.content?.find(b=>b.type==="text")?.text||"No response."}]);
     } catch { setMessages(p=>[...p,{role:"assistant",content:"⚠️ Connection error."}]); }
@@ -193,7 +194,7 @@ function ResumeAI() {
     if (!resume.trim()) return;
     setAnalyzing(true); setResult(null);
     try {
-      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:`You are an expert resume reviewer. Return ONLY valid JSON: {"overallScore":number,"atsScore":number,"impactScore":number,"strengths":[string,string,string],"improvements":[string,string,string],"summary":string}`,messages:[{role:"user",content:`Analyze:\n${resume}`}]})});
+      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:`You are an expert resume reviewer. Return ONLY valid JSON: {"overallScore":number,"atsScore":number,"impactScore":number,"strengths":[string,string,string],"improvements":[string,string,string],"summary":string}`,messages:[{role:"user",content:`Analyze:\n${resume}`}]})});
       const data = await res.json();
       const text = data.content?.find(b=>b.type==="text")?.text||"{}";
       setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
@@ -259,25 +260,40 @@ function CareerPath() {
 }
 
 // ─── JOB TRACKER ─────────────────────────────────────────────────────────────
-function JobTracker() {
-  const [jobs, setJobs] = useState([
-    {id:1,title:"Senior Frontend Engineer",company:"Stripe",status:"Interview",date:"Mar 5",salary:"$180k",notes:"2nd round scheduled"},
-    {id:2,title:"Product Designer",company:"Linear",status:"Applied",date:"Mar 3",salary:"$140k",notes:"Dream company"},
-    {id:3,title:"Full Stack Developer",company:"Vercel",status:"Offer",date:"Feb 28",salary:"$160k",notes:"Offer expires Mar 15"},
-    {id:4,title:"UI Engineer",company:"Figma",status:"Rejected",date:"Feb 22",salary:"$150k",notes:"Got to final round"},
-  ]);
+function JobTracker({ user }) {
+  const [jobs, setJobs] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({title:"",company:"",status:"Applied",salary:"",notes:""});
   const sc = {Applied:C.accent,Interview:C.accent2,Offer:C.accent3,Rejected:C.danger};
 
-  function addJob() {
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribeToJobs(user.uid, setJobs);
+    return unsub;
+  }, [user]);
+
+  async function handleAddJob() {
     if (!form.title||!form.company) return;
-    setJobs(p=>[...p,{...form,id:Date.now(),date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}]);
+    const date = new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});
+    if (user) {
+      await addJob(user.uid, {...form, date});
+    } else {
+      setJobs(p=>[...p,{...form,id:Date.now(),date}]);
+    }
     setForm({title:"",company:"",status:"Applied",salary:"",notes:""}); setShowAdd(false);
+  }
+
+  async function handleDeleteJob(jobId) {
+    if (user) {
+      await deleteJob(user.uid, jobId);
+    } else {
+      setJobs(p=>p.filter(x=>x.id!==jobId));
+    }
   }
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      {!user&&<div style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:10,padding:"10px 16px",color:C.accent,fontSize:13,textAlign:"center"}}>⚡ Sign in to save your applications across devices</div>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
         {["Applied","Interview","Offer","Rejected"].map(s=>(
           <Card key={s} glow={sc[s]} style={{textAlign:"center",padding:"16px 12px"}}>
@@ -297,10 +313,11 @@ function JobTracker() {
             <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none"}}>
               {["Applied","Interview","Offer","Rejected"].map(s=><option key={s}>{s}</option>)}
             </select>
-            <Btn onClick={addJob} color={C.accent3} small>Save Job</Btn>
+            <Btn onClick={handleAddJob} color={C.accent3} small>Save Job</Btn>
           </div>
         )}
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {jobs.length===0&&<div style={{textAlign:"center",color:C.muted,padding:"30px 0",fontFamily:"'DM Mono',monospace",fontSize:13}}>No applications yet. Add your first job! 🚀</div>}
           {jobs.map(j=>(
             <div key={j.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",background:"#0D1525",borderRadius:10,border:`1px solid ${C.cardBorder}`,flexWrap:"wrap",gap:8}}>
               <div style={{flex:1,minWidth:150}}>
@@ -310,7 +327,7 @@ function JobTracker() {
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <Badge label={j.status} color={sc[j.status]}/>
-                <button onClick={()=>setJobs(p=>p.filter(x=>x.id!==j.id))} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:16}}>×</button>
+                <button onClick={()=>handleDeleteJob(j.id)} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:16}}>×</button>
               </div>
             </div>
           ))}
@@ -333,7 +350,7 @@ function SalaryInsights() {
     if (!role.trim()) return;
     setLoading(true); setResult(null);
     try {
-      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:`You are a compensation expert. Return ONLY valid JSON:\n{"low":number,"mid":number,"high":number,"totalCompLow":number,"totalCompMid":number,"totalCompHigh":number,"topCompanies":[{"name":string,"range":string}],"skills":[string,string,string,string],"negotiationTips":[string,string,string],"marketOutlook":string,"remoteImpact":string}\nAll numbers are annual salary in thousands (e.g. 150 = $150k).`,messages:[{role:"user",content:`Role: ${role}, Location: ${location||"United States"}, Experience: ${exp}. Provide realistic current market data.`}]})});
+      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:`You are a compensation expert. Return ONLY valid JSON:\n{"low":number,"mid":number,"high":number,"totalCompLow":number,"totalCompMid":number,"totalCompHigh":number,"topCompanies":[{"name":string,"range":string}],"skills":[string,string,string,string],"negotiationTips":[string,string,string],"marketOutlook":string,"remoteImpact":string}\nAll numbers are annual salary in thousands (e.g. 150 = $150k).`,messages:[{role:"user",content:`Role: ${role}, Location: ${location||"United States"}, Experience: ${exp}. Provide realistic current market data.`}]})});
       const data = await res.json();
       const text = data.content?.find(b=>b.type==="text")?.text||"{}";
       setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
@@ -436,7 +453,7 @@ function CoverLetter() {
     if (!form.role||!form.company) return;
     setLoading(true); setLetter("");
     try {
-      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:`You are an expert cover letter writer. Tone: ${form.tone}. Be specific, avoid clichés, make it human and authentic. Return only the cover letter text.`,messages:[{role:"user",content:`Name: ${form.name||"[Your Name]"}\nRole: ${form.role}\nCompany: ${form.company}\n${form.resume?"Resume highlights:\n"+form.resume:""}\n${form.jd?"Job description:\n"+form.jd:""}`}]})});
+      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:`You are an expert cover letter writer. Tone: ${form.tone}. Be specific, avoid clichés, make it human and authentic. Return only the cover letter text.`,messages:[{role:"user",content:`Name: ${form.name||"[Your Name]"}\nRole: ${form.role}\nCompany: ${form.company}\n${form.resume?"Resume highlights:\n"+form.resume:""}\n${form.jd?"Job description:\n"+form.jd:""}`}]})});
       const data = await res.json();
       setLetter(data.content?.find(b=>b.type==="text")?.text||"Generation failed.");
     } catch { setLetter("⚠️ Failed to generate. Please try again."); }
@@ -501,7 +518,7 @@ function LinkedIn() {
     if (!input.trim()) return;
     setLoading(true); setResult(null);
     try {
-      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:prompts[section],messages:[{role:"user",content:`${input}${context?"\nAdditional context: "+context:""}`}]})});
+      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:prompts[section],messages:[{role:"user",content:`${input}${context?"\nAdditional context: "+context:""}`}]})});
       const data = await res.json();
       const text = data.content?.find(b=>b.type==="text")?.text||"{}";
       setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
@@ -627,7 +644,7 @@ export default function CareerPulseApp({ user, onSignOut }) {
             {tab==="Resume AI"       && <ResumeAI/>}
             {tab==="Interview Prep"  && <InterviewPrep/>}
             {tab==="Career Path"     && <CareerPath/>}
-            {tab==="Job Tracker"     && <JobTracker/>}
+            {tab==="Job Tracker"     && <JobTracker user={user}/>}
             {tab==="Salary Insights" && <SalaryInsights/>}
             {tab==="Cover Letter"    && <CoverLetter/>}
             {tab==="LinkedIn"        && <LinkedIn/>}
