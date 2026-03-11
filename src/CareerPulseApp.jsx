@@ -495,109 +495,98 @@ function CoverLetter() {
   );
 }
 
-// ─── LINKEDIN OPTIMIZER ───────────────────────────────────────────────────────
-function LinkedIn() {
-  const [section, setSection] = useState("Headline");
-  const [input, setInput] = useState("");
-  const [context, setContext] = useState("");
+// ─── JOB SEARCH ──────────────────────────────────────────────────────────────
+function JobSearch({ user }) {
+  const [query, setQuery] = useState("");
+  const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [searched, setSearched] = useState(false);
+  const [saved, setSaved] = useState({});
 
-  const sections = [{label:"Headline",icon:"✦"},{label:"Summary",icon:"📝"},{label:"Experience",icon:"💼"},{label:"Skills",icon:"⚡"},{label:"Connection Note",icon:"🤝"}];
-  const descs = {Headline:"Craft a magnetic headline that gets you noticed",Summary:"Write an About section that tells your story",Experience:"Transform duties into impact statements",Skills:"Identify the right skills to feature","Connection Note":"Write personalized connection request messages"};
-  const prompts = {
-    Headline:`You are a LinkedIn expert. Generate 5 compelling LinkedIn headlines (under 220 chars each, keyword-rich). Return ONLY JSON: {"headlines":[{"text":string,"why":string}]}`,
-    Summary:`You are a LinkedIn expert. Write a compelling LinkedIn About section (300-400 words, first person, story-driven, keyword-optimized). Return ONLY JSON: {"summary":string,"keywords":[string]}`,
-    Experience:`You are a LinkedIn expert. Rewrite job bullets using STAR format with strong action verbs and quantified impact. Return ONLY JSON: {"bullets":[string],"tips":[string]}`,
-    Skills:`You are a LinkedIn expert. Suggest top LinkedIn skills based on the role. Return ONLY JSON: {"topSkills":[string],"emergingSkills":[string],"tip":string}`,
-    "Connection Note":`You are a LinkedIn expert. Write 3 personalized connection request messages (under 300 chars each). Return ONLY JSON: {"messages":[{"message":string,"context":string}]}`,
-  };
-  const placeholders = {Headline:"e.g. Senior Frontend Engineer at Stripe | React, TypeScript | Building products used by millions",Summary:"e.g. 5 years in frontend engineering, led teams at 2 startups, passionate about design systems...",Experience:"e.g. Built new onboarding flow. Worked on dashboard features. Helped with bug fixes...",Skills:"e.g. Frontend engineer with React, TypeScript, Node.js, 4 years experience, applying to senior roles","Connection Note":"e.g. Reaching out to a PM at Figma after seeing their talk on design systems"};
-
-  async function optimize() {
-    if (!input.trim()) return;
-    setLoading(true); setResult(null);
+  async function search() {
+    if (!query.trim()) return;
+    setLoading(true); setJobs([]); setSearched(true);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:prompts[section],messages:[{role:"user",content:`${input}${context?"\nAdditional context: "+context:""}`}]})});
+      const url = `/api/jobs?q=${encodeURIComponent(query)}${location ? "&where=" + encodeURIComponent(location) : ""}`;
+      const res = await fetch(url);
       const data = await res.json();
-      const text = data.content?.find(b=>b.type==="text")?.text||"{}";
-      setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
-    } catch { setResult({error:true}); }
+      setJobs(data.results || []);
+    } catch { setJobs([]); }
     setLoading(false);
   }
 
+  async function saveJob(job) {
+    if (!user) { alert("Sign in to save jobs!"); return; }
+    const { addJob } = await import("./db");
+    await addJob(user.uid, {
+      title: job.title,
+      company: job.company?.display_name || "Unknown",
+      status: "Applied",
+      salary: job.salary_min ? `$${Math.round(job.salary_min/1000)}k - $${Math.round(job.salary_max/1000)}k` : "",
+      notes: job.location?.display_name || "",
+      date: new Date().toLocaleDateString("en-US", {month:"short", day:"numeric"}),
+      url: job.redirect_url,
+    });
+    setSaved(p => ({...p, [job.id]: true}));
+  }
+
+  const categories = ["Software Engineer","Frontend Developer","Backend Developer","Product Manager","Data Scientist","UX Designer","DevOps Engineer","Full Stack Developer"];
+
   return (
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
-      <Card glow={C.pink}>
-        <div style={{color:C.text,fontWeight:700,fontSize:16,marginBottom:4}}>LinkedIn Profile Optimizer 🔗</div>
-        <div style={{color:C.muted,fontSize:13,marginBottom:20}}>Turn your LinkedIn into a recruiter magnet with AI</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
-          {sections.map(s=>(
-            <button key={s.label} onClick={()=>{setSection(s.label);setResult(null);setInput("");}} style={{padding:"10px 6px",borderRadius:10,border:`1px solid ${section===s.label?C.pink+"66":C.cardBorder}`,background:section===s.label?C.pink+"18":"#0D1525",cursor:"pointer",textAlign:"center",transition:"all 0.2s"}}>
-              <div style={{fontSize:16,marginBottom:4}}>{s.icon}</div>
-              <div style={{color:section===s.label?C.pink:C.muted,fontSize:11,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{s.label}</div>
-            </button>
-          ))}
-        </div>
-        <div style={{color:C.muted,fontSize:13,marginBottom:12,padding:"10px 14px",background:"#0D1525",borderRadius:8,borderLeft:`3px solid ${C.pink}`}}>{descs[section]}</div>
-        <div style={{marginBottom:12}}>
-          <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6,letterSpacing:1}}>YOUR {section.toUpperCase()} / CONTEXT *</div>
-          <TArea value={input} onChange={e=>setInput(e.target.value)} placeholder={placeholders[section]} height={100}/>
+      <Card glow={C.accent2}>
+        <div style={{color:C.text,fontWeight:700,fontSize:16,marginBottom:4}}>Job Search 🔍</div>
+        <div style={{color:C.muted,fontSize:13,marginBottom:20}}>Search millions of real jobs and track them instantly</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6,letterSpacing:1}}>JOB TITLE / KEYWORDS *</div><Inp value={query} onChange={e=>setQuery(e.target.value)} placeholder="e.g. Frontend Engineer"/></div>
+          <div><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6,letterSpacing:1}}>LOCATION</div><Inp value={location} onChange={e=>setLocation(e.target.value)} placeholder="e.g. New York, NY"/></div>
         </div>
         <div style={{marginBottom:16}}>
-          <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6,letterSpacing:1}}>TARGET ROLE / EXTRA CONTEXT (optional)</div>
-          <Inp value={context} onChange={e=>setContext(e.target.value)} placeholder="e.g. Targeting Staff Engineer roles at FAANG companies"/>
+          <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:8,letterSpacing:1}}>POPULAR SEARCHES</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {categories.map(c=><button key={c} onClick={()=>setQuery(c)} style={{padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:600,fontFamily:"'DM Mono',monospace",cursor:"pointer",background:query===c?C.accent2+"22":"#0D1525",color:query===c?C.accent2:C.muted,border:`1px solid ${query===c?C.accent2+"66":C.cardBorder}`,transition:"all 0.2s"}}>{c}</button>)}
+          </div>
         </div>
-        <Btn onClick={optimize} disabled={loading||!input.trim()} color={`linear-gradient(135deg,${C.pink},${C.accent2})`}>{loading?"Optimizing...":"🔗 Optimize LinkedIn"}</Btn>
+        <Btn onClick={search} disabled={loading||!query.trim()} color={`linear-gradient(135deg,${C.accent2},${C.accent})`}>{loading?"Searching...":"🔍 Search Jobs"}</Btn>
       </Card>
 
-      {result&&!result.error&&(
-        <div style={{display:"flex",flexDirection:"column",gap:12,animation:"fadeUp 0.5s ease"}}>
-          {result.headlines&&result.headlines.map((h,i)=>(
-            <Card key={i} glow={C.pink} style={{padding:"16px 20px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
-                <div style={{flex:1}}><div style={{color:C.text,fontSize:14,fontWeight:600,lineHeight:1.5,marginBottom:6}}>{h.text}</div><div style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{h.why}</div></div>
-                <CopyBtn text={h.text}/>
-              </div>
-            </Card>
-          ))}
-          {result.summary&&(
-            <Card glow={C.pink}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{color:C.text,fontWeight:700,fontSize:15}}>📝 Optimized About Section</div><CopyBtn text={result.summary}/></div>
-              <ResultBox>{result.summary}</ResultBox>
-              {result.keywords&&<div style={{marginTop:14}}><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:8,letterSpacing:1}}>KEYWORDS TO INCLUDE</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{result.keywords.map((k,i)=><Badge key={i} label={k} color={C.pink}/>)}</div></div>}
-            </Card>
-          )}
-          {result.bullets&&(
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <Card glow={C.pink}>
-                <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:14}}>💼 Rewritten Bullets</div>
-                {result.bullets.map((b,i)=>(
-                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10,padding:"10px 14px",background:"#0D1525",borderRadius:8}}>
-                    <div style={{color:C.text,fontSize:13,lineHeight:1.6,flex:1}}>{b}</div><CopyBtn text={b}/>
+      {loading&&(
+        <Card><div style={{textAlign:"center",padding:"40px 0",color:C.muted,fontFamily:"'DM Mono',monospace",fontSize:13}}>
+          <div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:12}}>{[0,1,2].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:C.accent2,animation:`bounce 1.2s ease-in-out ${i*0.2}s infinite`}}/>)}</div>
+          Searching millions of jobs...
+        </div></Card>
+      )}
+
+      {!loading&&searched&&jobs.length===0&&(
+        <Card glow={C.warn}><div style={{textAlign:"center",color:C.muted,padding:"30px 0",fontFamily:"'DM Mono',monospace",fontSize:13}}>No jobs found. Try different keywords! 🔍</div></Card>
+      )}
+
+      {jobs.length>0&&(
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <div style={{color:C.muted,fontSize:12,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>{jobs.length} JOBS FOUND FOR "{query.toUpperCase()}"</div>
+          {jobs.map((j,i)=>(
+            <Card key={j.id||i} glow={C.accent2} style={{padding:"20px 24px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:200}}>
+                  <div style={{color:C.text,fontSize:15,fontWeight:700,marginBottom:4}}>{j.title}</div>
+                  <div style={{color:C.accent2,fontSize:13,fontWeight:600,marginBottom:6}}>{j.company?.display_name}</div>
+                  <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:8}}>
+                    {j.location?.display_name&&<span style={{color:C.muted,fontSize:12,fontFamily:"'DM Mono',monospace"}}>📍 {j.location.display_name}</span>}
+                    {j.salary_min&&<span style={{color:C.accent3,fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:600}}>💰 ${Math.round(j.salary_min/1000)}k - ${Math.round(j.salary_max/1000)}k</span>}
+                    {j.contract_time&&<Badge label={j.contract_time.replace("_"," ")} color={C.accent}/>}
                   </div>
-                ))}
-              </Card>
-              {result.tips&&<Card glow={C.warn}><div style={{color:C.warn,fontWeight:700,fontSize:14,marginBottom:12}}>⚡ Pro Tips</div>{result.tips.map((t,i)=><div key={i} style={{color:C.text,fontSize:13,marginBottom:8,paddingLeft:12,borderLeft:`2px solid ${C.warn}`,lineHeight:1.5}}>{t}</div>)}</Card>}
-            </div>
-          )}
-          {result.topSkills&&(
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-              <Card glow={C.pink}><div style={{color:C.text,fontWeight:700,fontSize:14,marginBottom:12}}>⚡ Must-Have Skills</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{result.topSkills.map((s,i)=><Badge key={i} label={s} color={C.pink}/>)}</div></Card>
-              <Card glow={C.accent3}><div style={{color:C.text,fontWeight:700,fontSize:14,marginBottom:12}}>🚀 Emerging Skills</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{result.emergingSkills?.map((s,i)=><Badge key={i} label={s} color={C.accent3}/>)}</div>{result.tip&&<div style={{color:C.muted,fontSize:12,marginTop:10,lineHeight:1.5}}>{result.tip}</div>}</Card>
-            </div>
-          )}
-          {result.messages&&result.messages.map((m,i)=>(
-            <Card key={i} glow={C.pink} style={{padding:"16px 20px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
-                <div style={{flex:1}}><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6}}>{m.context}</div><div style={{color:C.text,fontSize:13,lineHeight:1.6}}>{m.message}</div><div style={{color:C.muted,fontSize:11,marginTop:6,fontFamily:"'DM Mono',monospace"}}>{m.message?.length||0} / 300 chars</div></div>
-                <CopyBtn text={m.message}/>
+                  <div style={{color:C.muted,fontSize:12,lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{j.description?.replace(/<[^>]*>/g,"")}</div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:8,flexShrink:0}}>
+                  <a href={j.redirect_url} target="_blank" rel="noreferrer" style={{background:`linear-gradient(135deg,${C.accent2},${C.accent})`,border:"none",borderRadius:10,padding:"8px 16px",color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center"}}>Apply →</a>
+                  <button onClick={()=>saveJob(j)} disabled={saved[j.id]} style={{background:saved[j.id]?C.accent3+"22":"#0D1525",border:`1px solid ${saved[j.id]?C.accent3:C.cardBorder}`,borderRadius:10,padding:"8px 16px",color:saved[j.id]?C.accent3:C.muted,cursor:saved[j.id]?"default":"pointer",fontSize:12,fontWeight:600,transition:"all 0.2s"}}>{saved[j.id]?"✓ Saved":"+ Track"}</button>
+                </div>
               </div>
             </Card>
           ))}
         </div>
       )}
-      {result?.error&&<Card glow={C.danger}><div style={{color:C.danger,textAlign:"center"}}>Optimization failed. Please try again.</div></Card>}
     </div>
   );
 }
@@ -605,7 +594,7 @@ function LinkedIn() {
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CareerPulseApp({ user, onSignOut }) {
   const [tab, setTab] = useState("Dashboard");
-  const tabs = [{l:"Dashboard",i:"⚡"},{l:"Resume AI",i:"✦"},{l:"Interview Prep",i:"🎯"},{l:"Career Path",i:"🚀"},{l:"Job Tracker",i:"📊"},{l:"Salary Insights",i:"💰"},{l:"Cover Letter",i:"✉️"},{l:"LinkedIn",i:"🔗"}];
+  const tabs = [{l:"Dashboard",i:"⚡"},{l:"Resume AI",i:"✦"},{l:"Interview Prep",i:"🎯"},{l:"Career Path",i:"🚀"},{l:"Job Tracker",i:"📊"},{l:"Salary Insights",i:"💰"},{l:"Cover Letter",i:"✉️"},{l:"Job Search",i:"🔍"},{l:"LinkedIn",i:"🔗"}];
 
   return (
     <>
@@ -647,6 +636,7 @@ export default function CareerPulseApp({ user, onSignOut }) {
             {tab==="Job Tracker"     && <JobTracker user={user}/>}
             {tab==="Salary Insights" && <SalaryInsights/>}
             {tab==="Cover Letter"    && <CoverLetter/>}
+            {tab==="Job Search"      && <JobSearch user={user}/>}
             {tab==="LinkedIn"        && <LinkedIn/>}
           </div>
         </div>
