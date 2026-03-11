@@ -508,7 +508,7 @@ function JobSearch({ user }) {
     if (!query.trim()) return;
     setLoading(true); setJobs([]); setSearched(true);
     try {
-      const url = `/api/jobs?q=${encodeURIComponent(query)}${location ? "&where=" + encodeURIComponent(location) : ""}`;
+      const url = `/api/jobs?what=${encodeURIComponent(query)}${location ? "&where=" + encodeURIComponent(location) : ""}`;
       const res = await fetch(url);
       const data = await res.json();
       setJobs(data.results || []);
@@ -591,10 +591,262 @@ function JobSearch({ user }) {
   );
 }
 
+// ─── RESUME BUILDER ───────────────────────────────────────────────────────────
+function ResumeBuilder() {
+  const empty = { name:"", email:"", phone:"", location:"", linkedin:"", summary:"",
+    experience:[{id:1,title:"",company:"",start:"",end:"",current:false,bullets:""}],
+    education:[{id:1,degree:"",school:"",year:"",gpa:""}],
+    skills:"", projects:[{id:1,name:"",tech:"",desc:""}] };
+  const [data, setData] = useState(empty);
+  const [view, setView] = useState("edit"); // edit | preview
+  const [enhancing, setEnhancing] = useState(null);
+
+  function setField(path, val) {
+    setData(d => {
+      const clone = JSON.parse(JSON.stringify(d));
+      const keys = path.split(".");
+      let cur = clone;
+      for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]];
+      cur[keys[keys.length - 1]] = val;
+      return clone;
+    });
+  }
+
+  function addItem(section, template) {
+    setData(d => ({ ...d, [section]: [...d[section], { ...template, id: Date.now() }] }));
+  }
+
+  function removeItem(section, id) {
+    setData(d => ({ ...d, [section]: d[section].filter(x => x.id !== id) }));
+  }
+
+  async function enhanceBullets(idx) {
+    const exp = data.experience[idx];
+    if (!exp.bullets.trim()) return;
+    setEnhancing(idx);
+    try {
+      const res = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:600,
+          system:"You are a resume expert. Rewrite job bullets using strong action verbs and quantified impact. Return ONLY the improved bullets, one per line, starting with •",
+          messages:[{role:"user",content:`Role: ${exp.title} at ${exp.company}\nBullets:\n${exp.bullets}`}] })});
+      const json = await res.json();
+      const improved = json.content?.find(b=>b.type==="text")?.text || exp.bullets;
+      const clone = JSON.parse(JSON.stringify(data));
+      clone.experience[idx].bullets = improved;
+      setData(clone);
+    } catch(e) { console.error(e); }
+    setEnhancing(null);
+  }
+
+  async function enhanceSummary() {
+    if (!data.summary.trim() && !data.experience[0]?.title) return;
+    setEnhancing("summary");
+    try {
+      const res = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:400,
+          system:"You are a resume expert. Write a compelling 3-sentence professional summary. Return ONLY the summary text.",
+          messages:[{role:"user",content:`Name: ${data.name}\nCurrent/Last role: ${data.experience[0]?.title} at ${data.experience[0]?.company}\nCurrent summary: ${data.summary}\nSkills: ${data.skills}`}] })});
+      const json = await res.json();
+      const improved = json.content?.find(b=>b.type==="text")?.text || data.summary;
+      setData(d => ({ ...d, summary: improved }));
+    } catch(e) { console.error(e); }
+    setEnhancing(null);
+  }
+
+  const Label = ({children}) => <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:5,letterSpacing:1,textTransform:"uppercase"}}>{children}</div>;
+  const SectionTitle = ({children,color=C.accent}) => <div style={{color,fontWeight:700,fontSize:14,marginBottom:14,paddingBottom:8,borderBottom:`1px solid ${C.cardBorder}`,display:"flex",alignItems:"center",gap:8}}>{children}</div>;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      {/* Header */}
+      <Card glow={C.accent}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+          <div>
+            <div style={{color:C.text,fontWeight:700,fontSize:16,marginBottom:4}}>Resume Builder 📄</div>
+            <div style={{color:C.muted,fontSize:13}}>Build a professional resume with AI-enhanced content</div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setView(view==="edit"?"preview":"edit")} style={{background:view==="preview"?C.accent+"22":"#0D1525",border:`1px solid ${view==="preview"?C.accent:C.cardBorder}`,borderRadius:8,padding:"8px 16px",color:view==="preview"?C.accent:C.muted,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'DM Mono',monospace",transition:"all 0.2s"}}>
+              {view==="edit"?"👁 Preview":"✏️ Edit"}
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {view==="edit" ? (
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+          {/* Personal Info */}
+          <Card glow={C.accent}>
+            <SectionTitle color={C.accent}>👤 Personal Information</SectionTitle>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[["Full Name","name"],["Email","email"],["Phone","phone"],["Location","location"],["LinkedIn URL","linkedin"]].map(([ph,key])=>(
+                <div key={key} style={key==="name"?{gridColumn:"1/-1"}:{}}>
+                  <Label>{ph}</Label>
+                  <Inp value={data[key]} onChange={e=>setField(key,e.target.value)} placeholder={ph}/>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Summary */}
+          <Card glow={C.accent2}>
+            <SectionTitle color={C.accent2}>✦ Professional Summary</SectionTitle>
+            <TArea value={data.summary} onChange={e=>setField("summary",e.target.value)} placeholder="Write a compelling summary of your professional background..." height={90}/>
+            <div style={{marginTop:10}}>
+              <Btn onClick={enhanceSummary} disabled={enhancing==="summary"} color={`linear-gradient(135deg,${C.accent2},${C.accent})`} small>
+                {enhancing==="summary"?"Enhancing...":"✦ AI Enhance Summary"}
+              </Btn>
+            </div>
+          </Card>
+
+          {/* Experience */}
+          <Card glow={C.accent3}>
+            <SectionTitle color={C.accent3}>💼 Work Experience</SectionTitle>
+            {data.experience.map((exp,idx)=>(
+              <div key={exp.id} style={{background:"#0D1525",borderRadius:12,padding:16,marginBottom:12,border:`1px solid ${C.cardBorder}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <span style={{color:C.accent3,fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700}}>POSITION {idx+1}</span>
+                  {data.experience.length>1&&<button onClick={()=>removeItem("experience",exp.id)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>×</button>}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <div><Label>Job Title</Label><Inp value={exp.title} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].title=e.target.value;setData(c);}} placeholder="e.g. Senior Frontend Engineer"/></div>
+                  <div><Label>Company</Label><Inp value={exp.company} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].company=e.target.value;setData(c);}} placeholder="e.g. Google"/></div>
+                  <div><Label>Start Date</Label><Inp value={exp.start} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].start=e.target.value;setData(c);}} placeholder="e.g. Jan 2022"/></div>
+                  <div><Label>End Date</Label><Inp value={exp.end} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].end=e.target.value;setData(c);}} placeholder="e.g. Present"/></div>
+                </div>
+                <div style={{marginBottom:10}}><Label>Responsibilities & Achievements</Label><TArea value={exp.bullets} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].bullets=e.target.value;setData(c);}} placeholder={"• Built new onboarding flow reducing drop-off by 30%\n• Led team of 4 engineers on dashboard redesign\n• Improved API response time by 50%"} height={100}/></div>
+                <Btn onClick={()=>enhanceBullets(idx)} disabled={enhancing===idx} color={`linear-gradient(135deg,${C.accent3},${C.accent})`} small>
+                  {enhancing===idx?"Enhancing...":"⚡ AI Enhance Bullets"}
+                </Btn>
+              </div>
+            ))}
+            <button onClick={()=>addItem("experience",{title:"",company:"",start:"",end:"",current:false,bullets:""})} style={{background:"transparent",border:`1px dashed ${C.accent3}66`,borderRadius:8,padding:"10px 20px",color:C.accent3,cursor:"pointer",fontSize:13,fontWeight:600,width:"100%",transition:"all 0.2s"}}>+ Add Position</button>
+          </Card>
+
+          {/* Education */}
+          <Card glow={C.warn}>
+            <SectionTitle color={C.warn}>🎓 Education</SectionTitle>
+            {data.education.map((edu,idx)=>(
+              <div key={edu.id} style={{background:"#0D1525",borderRadius:12,padding:16,marginBottom:12,border:`1px solid ${C.cardBorder}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <span style={{color:C.warn,fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700}}>DEGREE {idx+1}</span>
+                  {data.education.length>1&&<button onClick={()=>removeItem("education",edu.id)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>×</button>}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <div style={{gridColumn:"1/-1"}}><Label>Degree & Major</Label><Inp value={edu.degree} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.education[idx].degree=e.target.value;setData(c);}} placeholder="e.g. B.S. Computer Science"/></div>
+                  <div><Label>School</Label><Inp value={edu.school} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.education[idx].school=e.target.value;setData(c);}} placeholder="e.g. UC Berkeley"/></div>
+                  <div><Label>Graduation Year</Label><Inp value={edu.year} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.education[idx].year=e.target.value;setData(c);}} placeholder="e.g. 2022"/></div>
+                </div>
+              </div>
+            ))}
+            <button onClick={()=>addItem("education",{degree:"",school:"",year:"",gpa:""})} style={{background:"transparent",border:`1px dashed ${C.warn}66`,borderRadius:8,padding:"10px 20px",color:C.warn,cursor:"pointer",fontSize:13,fontWeight:600,width:"100%",transition:"all 0.2s"}}>+ Add Education</button>
+          </Card>
+
+          {/* Skills */}
+          <Card glow={C.pink}>
+            <SectionTitle color={C.pink}>⚡ Skills</SectionTitle>
+            <TArea value={data.skills} onChange={e=>setField("skills",e.target.value)} placeholder="e.g. React, TypeScript, Node.js, Python, AWS, Docker, PostgreSQL, GraphQL..." height={80}/>
+          </Card>
+
+          {/* Projects */}
+          <Card glow={C.accent2}>
+            <SectionTitle color={C.accent2}>🚀 Projects</SectionTitle>
+            {data.projects.map((proj,idx)=>(
+              <div key={proj.id} style={{background:"#0D1525",borderRadius:12,padding:16,marginBottom:12,border:`1px solid ${C.cardBorder}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <span style={{color:C.accent2,fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700}}>PROJECT {idx+1}</span>
+                  {data.projects.length>1&&<button onClick={()=>removeItem("projects",proj.id)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>×</button>}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <div><Label>Project Name</Label><Inp value={proj.name} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.projects[idx].name=e.target.value;setData(c);}} placeholder="e.g. CareerPulse"/></div>
+                  <div><Label>Tech Stack</Label><Inp value={proj.tech} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.projects[idx].tech=e.target.value;setData(c);}} placeholder="e.g. React, Firebase, Claude AI"/></div>
+                </div>
+                <div><Label>Description</Label><TArea value={proj.desc} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.projects[idx].desc=e.target.value;setData(c);}} placeholder="What did you build and what impact did it have?" height={70}/></div>
+              </div>
+            ))}
+            <button onClick={()=>addItem("projects",{name:"",tech:"",desc:""})} style={{background:"transparent",border:`1px dashed ${C.accent2}66`,borderRadius:8,padding:"10px 20px",color:C.accent2,cursor:"pointer",fontSize:13,fontWeight:600,width:"100%",transition:"all 0.2s"}}>+ Add Project</button>
+          </Card>
+
+          <Btn onClick={()=>setView("preview")} color={`linear-gradient(135deg,${C.accent2},${C.accent})`}>👁 Preview Resume</Btn>
+        </div>
+      ) : (
+        /* PREVIEW */
+        <Card style={{background:"#fff",color:"#111",padding:0,overflow:"hidden"}} id="resume-preview">
+          <div style={{padding:"40px 48px",fontFamily:"Georgia,serif",color:"#111",lineHeight:1.5}}>
+            {/* Header */}
+            <div style={{borderBottom:"2px solid #111",paddingBottom:16,marginBottom:20}}>
+              <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5,marginBottom:4}}>{data.name||"Your Name"}</div>
+              <div style={{fontSize:13,color:"#444",display:"flex",flexWrap:"wrap",gap:16}}>
+                {data.email&&<span>✉ {data.email}</span>}
+                {data.phone&&<span>📞 {data.phone}</span>}
+                {data.location&&<span>📍 {data.location}</span>}
+                {data.linkedin&&<span>🔗 {data.linkedin}</span>}
+              </div>
+            </div>
+
+            {/* Summary */}
+            {data.summary&&<div style={{marginBottom:20}}>
+              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:8,color:"#333"}}>Summary</div>
+              <div style={{fontSize:13,lineHeight:1.7,color:"#333"}}>{data.summary}</div>
+            </div>}
+
+            {/* Experience */}
+            {data.experience.some(e=>e.title)&&<div style={{marginBottom:20}}>
+              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:12,color:"#333",borderBottom:"1px solid #ddd",paddingBottom:6}}>Experience</div>
+              {data.experience.filter(e=>e.title).map((exp,i)=>(
+                <div key={i} style={{marginBottom:16}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                    <div style={{fontWeight:700,fontSize:14}}>{exp.title}</div>
+                    <div style={{fontSize:12,color:"#666"}}>{exp.start}{exp.end?` – ${exp.end}`:""}</div>
+                  </div>
+                  <div style={{fontSize:13,color:"#555",marginBottom:6,fontStyle:"italic"}}>{exp.company}</div>
+                  <div style={{fontSize:13,color:"#333",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{exp.bullets}</div>
+                </div>
+              ))}
+            </div>}
+
+            {/* Education */}
+            {data.education.some(e=>e.school)&&<div style={{marginBottom:20}}>
+              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:12,color:"#333",borderBottom:"1px solid #ddd",paddingBottom:6}}>Education</div>
+              {data.education.filter(e=>e.school).map((edu,i)=>(
+                <div key={i} style={{marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                  <div><div style={{fontWeight:700,fontSize:14}}>{edu.degree}</div><div style={{fontSize:13,color:"#555",fontStyle:"italic"}}>{edu.school}</div></div>
+                  <div style={{fontSize:12,color:"#666"}}>{edu.year}</div>
+                </div>
+              ))}
+            </div>}
+
+            {/* Projects */}
+            {data.projects.some(p=>p.name)&&<div style={{marginBottom:20}}>
+              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:12,color:"#333",borderBottom:"1px solid #ddd",paddingBottom:6}}>Projects</div>
+              {data.projects.filter(p=>p.name).map((proj,i)=>(
+                <div key={i} style={{marginBottom:12}}>
+                  <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:4}}>
+                    <span style={{fontWeight:700,fontSize:14}}>{proj.name}</span>
+                    {proj.tech&&<span style={{fontSize:12,color:"#666"}}>— {proj.tech}</span>}
+                  </div>
+                  <div style={{fontSize:13,color:"#333",lineHeight:1.7}}>{proj.desc}</div>
+                </div>
+              ))}
+            </div>}
+
+            {/* Skills */}
+            {data.skills&&<div>
+              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:8,color:"#333",borderBottom:"1px solid #ddd",paddingBottom:6}}>Skills</div>
+              <div style={{fontSize:13,color:"#333",lineHeight:1.7}}>{data.skills}</div>
+            </div>}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CareerPulseApp({ user, onSignOut }) {
   const [tab, setTab] = useState("Dashboard");
-  const tabs = [{l:"Dashboard",i:"⚡"},{l:"Resume AI",i:"✦"},{l:"Interview Prep",i:"🎯"},{l:"Career Path",i:"🚀"},{l:"Job Tracker",i:"📊"},{l:"Salary Insights",i:"💰"},{l:"Cover Letter",i:"✉️"},{l:"Job Search",i:"🔍"},{l:"LinkedIn",i:"🔗"}];
+  const tabs = [{l:"Dashboard",i:"⚡"},{l:"Resume AI",i:"✦"},{l:"Interview Prep",i:"🎯"},{l:"Career Path",i:"🚀"},{l:"Job Tracker",i:"📊"},{l:"Resume Builder",i:"📄"},{l:"Salary Insights",i:"💰"},{l:"Cover Letter",i:"✉️"},{l:"Job Search",i:"🔍"},{l:"LinkedIn",i:"🔗"}];
 
   return (
     <>
@@ -634,6 +886,7 @@ export default function CareerPulseApp({ user, onSignOut }) {
             {tab==="Interview Prep"  && <InterviewPrep/>}
             {tab==="Career Path"     && <CareerPath/>}
             {tab==="Job Tracker"     && <JobTracker user={user}/>}
+            {tab==="Resume Builder"  && <ResumeBuilder/>}
             {tab==="Salary Insights" && <SalaryInsights/>}
             {tab==="Cover Letter"    && <CoverLetter/>}
             {tab==="Job Search"      && <JobSearch user={user}/>}
