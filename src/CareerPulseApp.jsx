@@ -586,9 +586,9 @@ function LinkedIn() {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
-export default function CareerPulseApp() {
+export default function CareerPulseApp({ user, onSignOut }) {
   const [tab, setTab] = useState("Dashboard");
-  const tabs = [{l:"Dashboard",i:"⚡"},{l:"Resume AI",i:"✦"},{l:"Interview Prep",i:"🎯"},{l:"Career Path",i:"🚀"},{l:"Job Tracker",i:"📊"},{l:"Salary Insights",i:"💰"},{l:"Cover Letter",i:"✉️"},{l:"LinkedIn",i:"🔗"}];
+  const tabs = [{l:"Dashboard",i:"⚡"},{l:"Resume AI",i:"✦"},{l:"Interview Prep",i:"🎯"},{l:"Career Path",i:"🚀"},{l:"Job Tracker",i:"📊"},{l:"Resume Builder",i:"📄"},{l:"Salary Insights",i:"💰"},{l:"Cover Letter",i:"✉️"},{l:"Job Search",i:"🔍"},{l:"LinkedIn",i:"🔗"}];
 
   return (
     <>
@@ -617,13 +617,13 @@ export default function CareerPulseApp() {
               </button>
             ))}
           </div>
-          <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent2},${C.accent})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>J</div>
+          <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>{user&&user.photoURL?<img src={user.photoURL} alt="" style={{width:30,height:30,borderRadius:"50%",border:"1px solid #1E2D45"}}/>:<div style={{width:30,height:30,borderRadius:"50%",background:"linear-gradient(135deg,#7C3AED,#00D4FF)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff"}}>{user&&user.displayName?user.displayName[0]:"?"}</div>}{onSignOut&&<button onClick={onSignOut} style={{background:"none",border:"1px solid #1E2D45",borderRadius:6,padding:"4px 10px",color:"#64748B",cursor:"pointer",fontSize:11}}>Sign out</button>}</div>
         </div>
 
         {/* Content */}
         <div style={{maxWidth:940,margin:"0 auto",padding:"28px 20px"}}>
           <div key={tab} style={{animation:"fadeUp 0.4s ease"}}>
-            {tab==="Dashboard"       && <Dashboard setTab={setTab}/>}
+            {tab==="Dashboard"       && <Dashboard setTab={setTab} deadlineJobs={[]}/>}
             {tab==="Resume AI"       && <ResumeAI/>}
             {tab==="Interview Prep"  && <InterviewPrep/>}
             {tab==="Career Path"     && <CareerPath/>}
