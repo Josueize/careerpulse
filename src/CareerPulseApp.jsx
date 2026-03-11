@@ -1,5 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
-import { subscribeToJobs, addJob, deleteJob, updateJob, saveCoverLetter, subscribeToCoverLetters, deleteCoverLetter, saveResumeScore, subscribeToResumeScores } from "./db";
+﻿import { useState, useEffect, useRef } from "react"; import { subscribeToJobs } from "./db.js";
 
 const C = {
   bg: "#0A0E1A", card: "#111827", cardBorder: "#1E2D45",
@@ -121,21 +120,8 @@ function AIChat({ systemPrompt, placeholder, height=320 }) {
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function Dashboard({ setTab, deadlineJobs=[] }) {
-  const jobs = deadlineJobs;
-  const total = jobs.length;
-  const applied = jobs.filter(j=>j.status==="Applied").length;
-  const interviews = jobs.filter(j=>j.status==="Interview").length;
-  const offers = jobs.filter(j=>j.status==="Offer").length;
-  const rejected = jobs.filter(j=>j.status==="Rejected").length;
-  const offerRate = total>0 ? Math.round((offers/total)*100) : 0;
-  const interviewRate = total>0 ? Math.round(((interviews+offers)/total)*100) : 0;
-  const stats = [
-    {label:"Applications",value:total||0,suffix:"",color:C.accent},
-    {label:"Interviews",value:interviews||0,suffix:"",color:C.accent2},
-    {label:"Offers",value:offers||0,suffix:"",color:C.accent3},
-    {label:"Offer Rate",value:offerRate||0,suffix:"%",color:C.warn}
-  ];
-  const sc = {Applied:C.accent,Interview:C.accent2,Offer:C.accent3,Rejected:C.danger};
+  const jobs=deadlineJobs;const total=jobs.length;const applied=jobs.filter(j=>j.status==="Applied").length;const interviews=jobs.filter(j=>j.status==="Interview").length;const offers=jobs.filter(j=>j.status==="Offer").length;const rejected=jobs.filter(j=>j.status==="Rejected").length;const offerRate=total>0?Math.round((offers/total)*100):0;const interviewRate=total>0?Math.round(((interviews+offers)/total)*100):0;const sc={Applied:C.accent,Interview:C.accent2,Offer:C.accent3,Rejected:C.danger};const stats=[{label:"Applications",value:total,suffix:"",color:C.accent},{label:"Interviews",value:interviews,suffix:"",color:C.accent2},{label:"Offers",value:offers,suffix:"",color:C.accent3},{label:"Offer Rate",value:offerRate,suffix:"%",color:C.warn}];
+
   const tools = [{icon:"✦",label:"Resume AI",tab:"Resume AI",color:C.accent,desc:"Analyze & score"},{icon:"🎯",label:"Interview",tab:"Interview Prep",color:C.accent2,desc:"AI mock practice"},{icon:"💰",label:"Salary",tab:"Salary Insights",color:C.accent3,desc:"Know your worth"},{icon:"✉️",label:"Cover Letter",tab:"Cover Letter",color:C.warn,desc:"AI-crafted letters"},{icon:"🔗",label:"LinkedIn",tab:"LinkedIn",color:C.pink,desc:"Optimize profile"},{icon:"🚀",label:"Career Path",tab:"Career Path",color:C.accent,desc:"Plan your future"}];
   return (
     <div style={{display:"flex",flexDirection:"column",gap:24}}>
@@ -172,76 +158,25 @@ function Dashboard({ setTab, deadlineJobs=[] }) {
         </div>
       </div>
 
-      {(()=>{
-        const today = new Date(); today.setHours(0,0,0,0);
-        const upcoming = deadlineJobs.filter(j=>j.deadline).map(j=>{
-          const d = new Date(j.deadline); d.setHours(0,0,0,0);
-          const diff = Math.ceil((d-today)/(1000*60*60*24));
-          return {...j,diff};
-        }).filter(j=>j.diff<=7).sort((a,b)=>a.diff-b.diff);
-        if (upcoming.length===0) return null;
-        return (
-          <Card glow={C.warn}>
-            <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:14}}>🔔 Upcoming Deadlines</div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {upcoming.map((j,i)=>(
-                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#0D1525",borderRadius:10,border:`1px solid ${j.diff<0?C.danger+"44":j.diff<=3?C.warn+"44":C.cardBorder}`}}>
-                  <div>
-                    <div style={{color:C.text,fontSize:13,fontWeight:600}}>{j.title}</div>
-                    <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace"}}>{j.company}</div>
-                  </div>
-                  <Badge label={j.diff<0?"Overdue":j.diff===0?"Due Today!":j.diff===1?"Tomorrow":`${j.diff} days left`} color={j.diff<0?C.danger:j.diff<=3?C.warn:C.accent3}/>
-                </div>
-              ))}
-            </div>
-          </Card>
-        );
-      })()}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-        {/* Pipeline Funnel */}
         <Card glow={C.accent}>
-          <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:16}}>📊 Application Pipeline</div>
-          {total===0 ? (
-            <div style={{textAlign:"center",color:C.muted,padding:"20px 0",fontFamily:"'DM Mono',monospace",fontSize:13}}>Add jobs to see your pipeline!</div>
-          ) : (
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {[{label:"Applied",val:applied,color:C.accent},{label:"Interview",val:interviews,color:C.accent2},{label:"Offer",val:offers,color:C.accent3},{label:"Rejected",val:rejected,color:C.danger}].map((s,i)=>(
-                <div key={i}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                    <span style={{color:C.muted,fontSize:12,fontFamily:"'DM Mono',monospace"}}>{s.label}</span>
-                    <span style={{color:s.color,fontSize:12,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{s.val}</span>
-                  </div>
-                  <div style={{height:8,background:"#0D1525",borderRadius:8,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${total>0?(s.val/total)*100:0}%`,background:s.color,borderRadius:8,boxShadow:`0 0 8px ${s.color}66`,transition:"width 1s ease"}}/>
-                  </div>
-                </div>
-              ))}
-              <div style={{marginTop:8,padding:"10px 14px",background:"#0D1525",borderRadius:10,display:"flex",justifyContent:"space-between"}}>
-                <span style={{color:C.muted,fontSize:12,fontFamily:"'DM Mono',monospace"}}>Interview Rate</span>
-                <span style={{color:C.accent2,fontSize:13,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{interviewRate}%</span>
-              </div>
-            </div>
-          )}
+          <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:16}}>📈 Job Status Breakdown</div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {[{label:"Applied",val:applied,color:C.accent},{label:"Interview",val:interviews,color:C.accent2},{label:"Offer",val:offers,color:C.accent3},{label:"Rejected",val:rejected,color:C.danger}].map((s,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{color:C.muted,fontSize:13}}>{s.label}</span><span style={{color:s.color,fontWeight:700,fontSize:13}}>{s.val} job{s.val!==1?"s":""}</span></div>
+            ))}
+          </div>
         </Card>
-
-        {/* Recent Applications */}
         <Card>
-          <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:14}}>🕐 Recent Applications</div>
-          {jobs.length===0 ? (
-            <div style={{textAlign:"center",color:C.muted,padding:"20px 0",fontFamily:"'DM Mono',monospace",fontSize:13}}>No applications yet. Start tracking! 🚀</div>
-          ) : (
-            <div style={{display:"flex",flexDirection:"column",gap:11}}>
-              {[...jobs].reverse().slice(0,5).map((j,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <div>
-                    <div style={{color:C.text,fontSize:13,fontWeight:600}}>{j.title}</div>
-                    <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace"}}>{j.company} · {j.date}</div>
-                  </div>
-                  <Badge label={j.status} color={sc[j.status]||C.muted}/>
-                </div>
-              ))}
-            </div>
-          )}
+          <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:14}}>Recent Applications</div>
+          <div style={{display:"flex",flexDirection:"column",gap:11}}>
+            {jobs.map((j,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div><div style={{color:C.text,fontSize:13,fontWeight:600}}>{j.title}</div><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace"}}>{j.company} · {j.date}</div></div>
+                <Badge label={j.status} color={j.statusColor}/>
+              </div>
+            ))}
+          </div>
         </Card>
       </div>
     </div>
@@ -324,51 +259,25 @@ function CareerPath() {
 }
 
 // ─── JOB TRACKER ─────────────────────────────────────────────────────────────
-function JobTracker({ user }) {
-  const [jobs, setJobs] = useState([]);
+function JobTracker() {
+  const [jobs, setJobs] = useState([
+    {id:1,title:"Senior Frontend Engineer",company:"Stripe",status:"Interview",date:"Mar 5",salary:"$180k",notes:"2nd round scheduled"},
+    {id:2,title:"Product Designer",company:"Linear",status:"Applied",date:"Mar 3",salary:"$140k",notes:"Dream company"},
+    {id:3,title:"Full Stack Developer",company:"Vercel",status:"Offer",date:"Feb 28",salary:"$160k",notes:"Offer expires Mar 15"},
+    {id:4,title:"UI Engineer",company:"Figma",status:"Rejected",date:"Feb 22",salary:"$150k",notes:"Got to final round"},
+  ]);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({title:"",company:"",status:"Applied",salary:"",notes:"",deadline:""});
+  const [form, setForm] = useState({title:"",company:"",status:"Applied",salary:"",notes:""});
   const sc = {Applied:C.accent,Interview:C.accent2,Offer:C.accent3,Rejected:C.danger};
 
-  useEffect(() => {
-    if (!user) return;
-    const unsub = subscribeToJobs(user.uid, setJobs);
-    return unsub;
-  }, [user]);
-
-  async function handleAddJob() {
+  function addJob() {
     if (!form.title||!form.company) return;
-    const date = new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"});
-    if (user) {
-      await addJob(user.uid, {...form, date});
-    } else {
-      setJobs(p=>[...p,{...form,id:Date.now(),date}]);
-    }
-    setForm({title:"",company:"",status:"Applied",salary:"",notes:"",deadline:""}); setShowAdd(false);
-  }
-
-  async function handleDeleteJob(jobId) {
-    if (user) {
-      await deleteJob(user.uid, jobId);
-    } else {
-      setJobs(p=>p.filter(x=>x.id!==jobId));
-    }
-  }
-
-  function getDeadlineStatus(deadline) {
-    if (!deadline) return null;
-    const today = new Date(); today.setHours(0,0,0,0);
-    const d = new Date(deadline); d.setHours(0,0,0,0);
-    const diff = Math.ceil((d - today) / (1000*60*60*24));
-    if (diff < 0) return {label:"Overdue",color:C.danger};
-    if (diff === 0) return {label:"Due Today!",color:C.danger};
-    if (diff <= 3) return {label:`Due in ${diff}d`,color:C.warn};
-    return {label:`Due ${d.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`,color:C.muted};
+    setJobs(p=>[...p,{...form,id:Date.now(),date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}]);
+    setForm({title:"",company:"",status:"Applied",salary:"",notes:""}); setShowAdd(false);
   }
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
-      {!user&&<div style={{background:C.accent+"18",border:`1px solid ${C.accent}44`,borderRadius:10,padding:"10px 16px",color:C.accent,fontSize:13,textAlign:"center"}}>⚡ Sign in to save your applications across devices</div>}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
         {["Applied","Interview","Offer","Rejected"].map(s=>(
           <Card key={s} glow={sc[s]} style={{textAlign:"center",padding:"16px 12px"}}>
@@ -385,18 +294,13 @@ function JobTracker({ user }) {
         {showAdd&&(
           <div style={{background:"#0D1525",borderRadius:12,padding:16,marginBottom:16,display:"flex",flexDirection:"column",gap:10}}>
             {[["Job Title","title"],["Company","company"],["Salary","salary"],["Notes","notes"]].map(([ph,key])=><input key={key} placeholder={ph} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none"}}/>)}
-            <div style={{display:"flex",flexDirection:"column",gap:4}}>
-              <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>APPLICATION DEADLINE (optional)</div>
-              <input type="date" value={form.deadline} onChange={e=>setForm(f=>({...f,deadline:e.target.value}))} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none",colorScheme:"dark"}}/>
-            </div>
             <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none"}}>
               {["Applied","Interview","Offer","Rejected"].map(s=><option key={s}>{s}</option>)}
             </select>
-            <Btn onClick={handleAddJob} color={C.accent3} small>Save Job</Btn>
+            <Btn onClick={addJob} color={C.accent3} small>Save Job</Btn>
           </div>
         )}
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          {jobs.length===0&&<div style={{textAlign:"center",color:C.muted,padding:"30px 0",fontFamily:"'DM Mono',monospace",fontSize:13}}>No applications yet. Add your first job! 🚀</div>}
           {jobs.map(j=>(
             <div key={j.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 14px",background:"#0D1525",borderRadius:10,border:`1px solid ${C.cardBorder}`,flexWrap:"wrap",gap:8}}>
               <div style={{flex:1,minWidth:150}}>
@@ -404,10 +308,9 @@ function JobTracker({ user }) {
                 <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginTop:2}}>{j.company} · {j.date}{j.salary&&` · ${j.salary}`}</div>
                 {j.notes&&<div style={{color:C.muted,fontSize:11,marginTop:2,fontStyle:"italic"}}>{j.notes}</div>}
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <Badge label={j.status} color={sc[j.status]}/>
-                {j.deadline&&(()=>{const ds=getDeadlineStatus(j.deadline);return ds?<Badge label={ds.label} color={ds.color}/>:null;})()}
-                <button onClick={()=>handleDeleteJob(j.id)} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:16}}>×</button>
+                <button onClick={()=>setJobs(p=>p.filter(x=>x.id!==j.id))} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:16}}>×</button>
               </div>
             </div>
           ))}
@@ -575,410 +478,122 @@ function CoverLetter() {
   );
 }
 
-// ─── JOB SEARCH ──────────────────────────────────────────────────────────────
-function JobSearch({ user }) {
-  const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("");
+// ─── LINKEDIN OPTIMIZER ───────────────────────────────────────────────────────
+function LinkedIn() {
+  const [section, setSection] = useState("Headline");
+  const [input, setInput] = useState("");
+  const [context, setContext] = useState("");
   const [loading, setLoading] = useState(false);
-  const [jobs, setJobs] = useState([]);
-  const [searched, setSearched] = useState(false);
-  const [saved, setSaved] = useState({});
+  const [result, setResult] = useState(null);
 
-  async function search() {
-    if (!query.trim()) return;
-    setLoading(true); setJobs([]); setSearched(true);
+  const sections = [{label:"Headline",icon:"✦"},{label:"Summary",icon:"📝"},{label:"Experience",icon:"💼"},{label:"Skills",icon:"⚡"},{label:"Connection Note",icon:"🤝"}];
+  const descs = {Headline:"Craft a magnetic headline that gets you noticed",Summary:"Write an About section that tells your story",Experience:"Transform duties into impact statements",Skills:"Identify the right skills to feature","Connection Note":"Write personalized connection request messages"};
+  const prompts = {
+    Headline:`You are a LinkedIn expert. Generate 5 compelling LinkedIn headlines (under 220 chars each, keyword-rich). Return ONLY JSON: {"headlines":[{"text":string,"why":string}]}`,
+    Summary:`You are a LinkedIn expert. Write a compelling LinkedIn About section (300-400 words, first person, story-driven, keyword-optimized). Return ONLY JSON: {"summary":string,"keywords":[string]}`,
+    Experience:`You are a LinkedIn expert. Rewrite job bullets using STAR format with strong action verbs and quantified impact. Return ONLY JSON: {"bullets":[string],"tips":[string]}`,
+    Skills:`You are a LinkedIn expert. Suggest top LinkedIn skills based on the role. Return ONLY JSON: {"topSkills":[string],"emergingSkills":[string],"tip":string}`,
+    "Connection Note":`You are a LinkedIn expert. Write 3 personalized connection request messages (under 300 chars each). Return ONLY JSON: {"messages":[{"message":string,"context":string}]}`,
+  };
+  const placeholders = {Headline:"e.g. Senior Frontend Engineer at Stripe | React, TypeScript | Building products used by millions",Summary:"e.g. 5 years in frontend engineering, led teams at 2 startups, passionate about design systems...",Experience:"e.g. Built new onboarding flow. Worked on dashboard features. Helped with bug fixes...",Skills:"e.g. Frontend engineer with React, TypeScript, Node.js, 4 years experience, applying to senior roles","Connection Note":"e.g. Reaching out to a PM at Figma after seeing their talk on design systems"};
+
+  async function optimize() {
+    if (!input.trim()) return;
+    setLoading(true); setResult(null);
     try {
-      const url = `/api/jobs?what=${encodeURIComponent(query)}${location ? "&where=" + encodeURIComponent(location) : ""}`;
-      const res = await fetch(url);
+      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:prompts[section],messages:[{role:"user",content:`${input}${context?"\nAdditional context: "+context:""}`}]})});
       const data = await res.json();
-      setJobs(data.results || []);
-    } catch { setJobs([]); }
+      const text = data.content?.find(b=>b.type==="text")?.text||"{}";
+      setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
+    } catch { setResult({error:true}); }
     setLoading(false);
   }
 
-  async function saveJob(job) {
-    if (!user) { alert("Sign in to save jobs!"); return; }
-    const { addJob } = await import("./db");
-    await addJob(user.uid, {
-      title: job.title,
-      company: job.company?.display_name || "Unknown",
-      status: "Applied",
-      salary: job.salary_min ? `$${Math.round(job.salary_min/1000)}k - $${Math.round(job.salary_max/1000)}k` : "",
-      notes: job.location?.display_name || "",
-      date: new Date().toLocaleDateString("en-US", {month:"short", day:"numeric"}),
-      url: job.redirect_url,
-    });
-    setSaved(p => ({...p, [job.id]: true}));
-  }
-
-  const categories = ["Software Engineer","Frontend Developer","Backend Developer","Product Manager","Data Scientist","UX Designer","DevOps Engineer","Full Stack Developer"];
-
   return (
     <div style={{display:"flex",flexDirection:"column",gap:20}}>
-      <Card glow={C.accent2}>
-        <div style={{color:C.text,fontWeight:700,fontSize:16,marginBottom:4}}>Job Search 🔍</div>
-        <div style={{color:C.muted,fontSize:13,marginBottom:20}}>Search millions of real jobs and track them instantly</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-          <div><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6,letterSpacing:1}}>JOB TITLE / KEYWORDS *</div><Inp value={query} onChange={e=>setQuery(e.target.value)} placeholder="e.g. Frontend Engineer"/></div>
-          <div><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6,letterSpacing:1}}>LOCATION</div><Inp value={location} onChange={e=>setLocation(e.target.value)} placeholder="e.g. New York, NY"/></div>
+      <Card glow={C.pink}>
+        <div style={{color:C.text,fontWeight:700,fontSize:16,marginBottom:4}}>LinkedIn Profile Optimizer 🔗</div>
+        <div style={{color:C.muted,fontSize:13,marginBottom:20}}>Turn your LinkedIn into a recruiter magnet with AI</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
+          {sections.map(s=>(
+            <button key={s.label} onClick={()=>{setSection(s.label);setResult(null);setInput("");}} style={{padding:"10px 6px",borderRadius:10,border:`1px solid ${section===s.label?C.pink+"66":C.cardBorder}`,background:section===s.label?C.pink+"18":"#0D1525",cursor:"pointer",textAlign:"center",transition:"all 0.2s"}}>
+              <div style={{fontSize:16,marginBottom:4}}>{s.icon}</div>
+              <div style={{color:section===s.label?C.pink:C.muted,fontSize:11,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>{s.label}</div>
+            </button>
+          ))}
+        </div>
+        <div style={{color:C.muted,fontSize:13,marginBottom:12,padding:"10px 14px",background:"#0D1525",borderRadius:8,borderLeft:`3px solid ${C.pink}`}}>{descs[section]}</div>
+        <div style={{marginBottom:12}}>
+          <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6,letterSpacing:1}}>YOUR {section.toUpperCase()} / CONTEXT *</div>
+          <TArea value={input} onChange={e=>setInput(e.target.value)} placeholder={placeholders[section]} height={100}/>
         </div>
         <div style={{marginBottom:16}}>
-          <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:8,letterSpacing:1}}>POPULAR SEARCHES</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {categories.map(c=><button key={c} onClick={()=>setQuery(c)} style={{padding:"6px 12px",borderRadius:8,fontSize:11,fontWeight:600,fontFamily:"'DM Mono',monospace",cursor:"pointer",background:query===c?C.accent2+"22":"#0D1525",color:query===c?C.accent2:C.muted,border:`1px solid ${query===c?C.accent2+"66":C.cardBorder}`,transition:"all 0.2s"}}>{c}</button>)}
-          </div>
+          <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6,letterSpacing:1}}>TARGET ROLE / EXTRA CONTEXT (optional)</div>
+          <Inp value={context} onChange={e=>setContext(e.target.value)} placeholder="e.g. Targeting Staff Engineer roles at FAANG companies"/>
         </div>
-        <Btn onClick={search} disabled={loading||!query.trim()} color={`linear-gradient(135deg,${C.accent2},${C.accent})`}>{loading?"Searching...":"🔍 Search Jobs"}</Btn>
+        <Btn onClick={optimize} disabled={loading||!input.trim()} color={`linear-gradient(135deg,${C.pink},${C.accent2})`}>{loading?"Optimizing...":"🔗 Optimize LinkedIn"}</Btn>
       </Card>
 
-      {loading&&(
-        <Card><div style={{textAlign:"center",padding:"40px 0",color:C.muted,fontFamily:"'DM Mono',monospace",fontSize:13}}>
-          <div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:12}}>{[0,1,2].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:C.accent2,animation:`bounce 1.2s ease-in-out ${i*0.2}s infinite`}}/>)}</div>
-          Searching millions of jobs...
-        </div></Card>
-      )}
-
-      {!loading&&searched&&jobs.length===0&&(
-        <Card glow={C.warn}><div style={{textAlign:"center",color:C.muted,padding:"30px 0",fontFamily:"'DM Mono',monospace",fontSize:13}}>No jobs found. Try different keywords! 🔍</div></Card>
-      )}
-
-      {jobs.length>0&&(
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div style={{color:C.muted,fontSize:12,fontFamily:"'DM Mono',monospace",letterSpacing:1}}>{jobs.length} JOBS FOUND FOR "{query.toUpperCase()}"</div>
-          {jobs.map((j,i)=>(
-            <Card key={j.id||i} glow={C.accent2} style={{padding:"20px 24px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,flexWrap:"wrap"}}>
-                <div style={{flex:1,minWidth:200}}>
-                  <div style={{color:C.text,fontSize:15,fontWeight:700,marginBottom:4}}>{j.title}</div>
-                  <div style={{color:C.accent2,fontSize:13,fontWeight:600,marginBottom:6}}>{j.company?.display_name}</div>
-                  <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:8}}>
-                    {j.location?.display_name&&<span style={{color:C.muted,fontSize:12,fontFamily:"'DM Mono',monospace"}}>📍 {j.location.display_name}</span>}
-                    {j.salary_min&&<span style={{color:C.accent3,fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:600}}>💰 ${Math.round(j.salary_min/1000)}k - ${Math.round(j.salary_max/1000)}k</span>}
-                    {j.contract_time&&<Badge label={j.contract_time.replace("_"," ")} color={C.accent}/>}
+      {result&&!result.error&&(
+        <div style={{display:"flex",flexDirection:"column",gap:12,animation:"fadeUp 0.5s ease"}}>
+          {result.headlines&&result.headlines.map((h,i)=>(
+            <Card key={i} glow={C.pink} style={{padding:"16px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                <div style={{flex:1}}><div style={{color:C.text,fontSize:14,fontWeight:600,lineHeight:1.5,marginBottom:6}}>{h.text}</div><div style={{color:C.muted,fontSize:12,lineHeight:1.5}}>{h.why}</div></div>
+                <CopyBtn text={h.text}/>
+              </div>
+            </Card>
+          ))}
+          {result.summary&&(
+            <Card glow={C.pink}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><div style={{color:C.text,fontWeight:700,fontSize:15}}>📝 Optimized About Section</div><CopyBtn text={result.summary}/></div>
+              <ResultBox>{result.summary}</ResultBox>
+              {result.keywords&&<div style={{marginTop:14}}><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:8,letterSpacing:1}}>KEYWORDS TO INCLUDE</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{result.keywords.map((k,i)=><Badge key={i} label={k} color={C.pink}/>)}</div></div>}
+            </Card>
+          )}
+          {result.bullets&&(
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+              <Card glow={C.pink}>
+                <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:14}}>💼 Rewritten Bullets</div>
+                {result.bullets.map((b,i)=>(
+                  <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10,padding:"10px 14px",background:"#0D1525",borderRadius:8}}>
+                    <div style={{color:C.text,fontSize:13,lineHeight:1.6,flex:1}}>{b}</div><CopyBtn text={b}/>
                   </div>
-                  <div style={{color:C.muted,fontSize:12,lineHeight:1.6,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{j.description?.replace(/<[^>]*>/g,"")}</div>
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:8,flexShrink:0}}>
-                  <a href={j.redirect_url} target="_blank" rel="noreferrer" style={{background:`linear-gradient(135deg,${C.accent2},${C.accent})`,border:"none",borderRadius:10,padding:"8px 16px",color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center"}}>Apply →</a>
-                  <button onClick={()=>saveJob(j)} disabled={saved[j.id]} style={{background:saved[j.id]?C.accent3+"22":"#0D1525",border:`1px solid ${saved[j.id]?C.accent3:C.cardBorder}`,borderRadius:10,padding:"8px 16px",color:saved[j.id]?C.accent3:C.muted,cursor:saved[j.id]?"default":"pointer",fontSize:12,fontWeight:600,transition:"all 0.2s"}}>{saved[j.id]?"✓ Saved":"+ Track"}</button>
-                </div>
+                ))}
+              </Card>
+              {result.tips&&<Card glow={C.warn}><div style={{color:C.warn,fontWeight:700,fontSize:14,marginBottom:12}}>⚡ Pro Tips</div>{result.tips.map((t,i)=><div key={i} style={{color:C.text,fontSize:13,marginBottom:8,paddingLeft:12,borderLeft:`2px solid ${C.warn}`,lineHeight:1.5}}>{t}</div>)}</Card>}
+            </div>
+          )}
+          {result.topSkills&&(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+              <Card glow={C.pink}><div style={{color:C.text,fontWeight:700,fontSize:14,marginBottom:12}}>⚡ Must-Have Skills</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{result.topSkills.map((s,i)=><Badge key={i} label={s} color={C.pink}/>)}</div></Card>
+              <Card glow={C.accent3}><div style={{color:C.text,fontWeight:700,fontSize:14,marginBottom:12}}>🚀 Emerging Skills</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{result.emergingSkills?.map((s,i)=><Badge key={i} label={s} color={C.accent3}/>)}</div>{result.tip&&<div style={{color:C.muted,fontSize:12,marginTop:10,lineHeight:1.5}}>{result.tip}</div>}</Card>
+            </div>
+          )}
+          {result.messages&&result.messages.map((m,i)=>(
+            <Card key={i} glow={C.pink} style={{padding:"16px 20px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                <div style={{flex:1}}><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:6}}>{m.context}</div><div style={{color:C.text,fontSize:13,lineHeight:1.6}}>{m.message}</div><div style={{color:C.muted,fontSize:11,marginTop:6,fontFamily:"'DM Mono',monospace"}}>{m.message?.length||0} / 300 chars</div></div>
+                <CopyBtn text={m.message}/>
               </div>
             </Card>
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── RESUME BUILDER ───────────────────────────────────────────────────────────
-function ResumeBuilder({ user }) {
-  const empty = { name:"", email:"", phone:"", location:"", linkedin:"", summary:"",
-    experience:[{id:1,title:"",company:"",start:"",end:"",current:false,bullets:""}],
-    education:[{id:1,degree:"",school:"",year:"",gpa:""}],
-    skills:"", projects:[{id:1,name:"",tech:"",desc:""}] };
-  const [data, setData] = useState(empty);
-  const [view, setView] = useState("edit"); // edit | preview
-  const [enhancing, setEnhancing] = useState(null);
-  const [shareId, setShareId] = useState(null);
-  const [sharing, setSharing] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  async function shareResume() {
-    if (!user) { alert("Sign in to share your resume!"); return; }
-    if (!data.name.trim()) { alert("Add your name first!"); return; }
-    setSharing(true);
-    try {
-      const id = Math.random().toString(36).substr(2,9);
-      const { setDoc, doc } = await import("firebase/firestore");
-      const { db } = await import("./firebase");
-      await setDoc(doc(db, "shared_resumes", id), { ...data, createdAt: new Date().toISOString(), ownerUid: user.uid });
-      setShareId(id);
-    } catch(e) { console.error(e); alert("Share failed. Try again!"); }
-    setSharing(false);
-  }
-
-  function copyLink() {
-    const link = `${window.location.origin}?resume=${shareId}`;
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  function setField(path, val) {
-    setData(d => {
-      const clone = JSON.parse(JSON.stringify(d));
-      const keys = path.split(".");
-      let cur = clone;
-      for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]];
-      cur[keys[keys.length - 1]] = val;
-      return clone;
-    });
-  }
-
-  function addItem(section, template) {
-    setData(d => ({ ...d, [section]: [...d[section], { ...template, id: Date.now() }] }));
-  }
-
-  function removeItem(section, id) {
-    setData(d => ({ ...d, [section]: d[section].filter(x => x.id !== id) }));
-  }
-
-  async function enhanceBullets(idx) {
-    const exp = data.experience[idx];
-    if (!exp.bullets.trim()) return;
-    setEnhancing(idx);
-    try {
-      const res = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:600,
-          system:"You are a resume expert. Rewrite job bullets using strong action verbs and quantified impact. Return ONLY the improved bullets, one per line, starting with •",
-          messages:[{role:"user",content:`Role: ${exp.title} at ${exp.company}\nBullets:\n${exp.bullets}`}] })});
-      const json = await res.json();
-      const improved = json.content?.find(b=>b.type==="text")?.text || exp.bullets;
-      const clone = JSON.parse(JSON.stringify(data));
-      clone.experience[idx].bullets = improved;
-      setData(clone);
-    } catch(e) { console.error(e); }
-    setEnhancing(null);
-  }
-
-  async function enhanceSummary() {
-    if (!data.summary.trim() && !data.experience[0]?.title) return;
-    setEnhancing("summary");
-    try {
-      const res = await fetch("/api/claude", { method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:400,
-          system:"You are a resume expert. Write a compelling 3-sentence professional summary. Return ONLY the summary text.",
-          messages:[{role:"user",content:`Name: ${data.name}\nCurrent/Last role: ${data.experience[0]?.title} at ${data.experience[0]?.company}\nCurrent summary: ${data.summary}\nSkills: ${data.skills}`}] })});
-      const json = await res.json();
-      const improved = json.content?.find(b=>b.type==="text")?.text || data.summary;
-      setData(d => ({ ...d, summary: improved }));
-    } catch(e) { console.error(e); }
-    setEnhancing(null);
-  }
-
-  function downloadPDF() {
-    const style = document.createElement("style");
-    style.innerHTML = `@media print { body * { visibility: hidden; } #resume-preview, #resume-preview * { visibility: visible; } #resume-preview { position: fixed; left: 0; top: 0; width: 100%; } }`;
-    document.head.appendChild(style);
-    window.print();
-    document.head.removeChild(style);
-  }
-
-  const Label = ({children}) => <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:5,letterSpacing:1,textTransform:"uppercase"}}>{children}</div>;
-  const SectionTitle = ({children,color=C.accent}) => <div style={{color,fontWeight:700,fontSize:14,marginBottom:14,paddingBottom:8,borderBottom:`1px solid ${C.cardBorder}`,display:"flex",alignItems:"center",gap:8}}>{children}</div>;
-
-  return (
-    <div style={{display:"flex",flexDirection:"column",gap:20}}>
-      {/* Header */}
-      <Card glow={C.accent}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
-          <div>
-            <div style={{color:C.text,fontWeight:700,fontSize:16,marginBottom:4}}>Resume Builder 📄</div>
-            <div style={{color:C.muted,fontSize:13}}>Build a professional resume with AI-enhanced content</div>
-          </div>
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={()=>setView(view==="edit"?"preview":"edit")} style={{background:view==="preview"?C.accent+"22":"#0D1525",border:`1px solid ${view==="preview"?C.accent:C.cardBorder}`,borderRadius:8,padding:"8px 16px",color:view==="preview"?C.accent:C.muted,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'DM Mono',monospace",transition:"all 0.2s"}}>
-              {view==="edit"?"👁 Preview":"✏️ Edit"}
-            </button>
-            <button onClick={downloadPDF} style={{background:`linear-gradient(135deg,${C.accent2},${C.accent})`,border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>⬇ Download PDF</button>
-            <button onClick={shareResume} disabled={sharing} style={{background:`linear-gradient(135deg,${C.accent3},${C.accent2})`,border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"'DM Mono',monospace",opacity:sharing?0.7:1}}>{sharing?"Sharing...":"🔗 Share Resume"}</button>
-            {shareId&&(
-              <div style={{display:"flex",alignItems:"center",gap:8,background:"#0D1525",borderRadius:8,padding:"6px 12px",border:`1px solid ${C.accent3}44`}}>
-                <span style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{window.location.origin}?resume={shareId}</span>
-                <button onClick={copyLink} style={{background:copied?C.accent3:"transparent",border:`1px solid ${C.accent3}`,borderRadius:6,padding:"3px 8px",color:copied?"#fff":C.accent3,cursor:"pointer",fontSize:11,fontWeight:700,whiteSpace:"nowrap"}}>{copied?"✓ Copied!":"Copy"}</button>
-              </div>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {view==="edit" ? (
-        <div style={{display:"flex",flexDirection:"column",gap:16}}>
-
-          {/* Personal Info */}
-          <Card glow={C.accent}>
-            <SectionTitle color={C.accent}>👤 Personal Information</SectionTitle>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              {[["Full Name","name"],["Email","email"],["Phone","phone"],["Location","location"],["LinkedIn URL","linkedin"]].map(([ph,key])=>(
-                <div key={key} style={key==="name"?{gridColumn:"1/-1"}:{}}>
-                  <Label>{ph}</Label>
-                  <Inp value={data[key]} onChange={e=>setField(key,e.target.value)} placeholder={ph}/>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Summary */}
-          <Card glow={C.accent2}>
-            <SectionTitle color={C.accent2}>✦ Professional Summary</SectionTitle>
-            <TArea value={data.summary} onChange={e=>setField("summary",e.target.value)} placeholder="Write a compelling summary of your professional background..." height={90}/>
-            <div style={{marginTop:10}}>
-              <Btn onClick={enhanceSummary} disabled={enhancing==="summary"} color={`linear-gradient(135deg,${C.accent2},${C.accent})`} small>
-                {enhancing==="summary"?"Enhancing...":"✦ AI Enhance Summary"}
-              </Btn>
-            </div>
-          </Card>
-
-          {/* Experience */}
-          <Card glow={C.accent3}>
-            <SectionTitle color={C.accent3}>💼 Work Experience</SectionTitle>
-            {data.experience.map((exp,idx)=>(
-              <div key={exp.id} style={{background:"#0D1525",borderRadius:12,padding:16,marginBottom:12,border:`1px solid ${C.cardBorder}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                  <span style={{color:C.accent3,fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700}}>POSITION {idx+1}</span>
-                  {data.experience.length>1&&<button onClick={()=>removeItem("experience",exp.id)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>×</button>}
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-                  <div><Label>Job Title</Label><Inp value={exp.title} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].title=e.target.value;setData(c);}} placeholder="e.g. Senior Frontend Engineer"/></div>
-                  <div><Label>Company</Label><Inp value={exp.company} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].company=e.target.value;setData(c);}} placeholder="e.g. Google"/></div>
-                  <div><Label>Start Date</Label><Inp value={exp.start} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].start=e.target.value;setData(c);}} placeholder="e.g. Jan 2022"/></div>
-                  <div><Label>End Date</Label><Inp value={exp.end} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].end=e.target.value;setData(c);}} placeholder="e.g. Present"/></div>
-                </div>
-                <div style={{marginBottom:10}}><Label>Responsibilities & Achievements</Label><TArea value={exp.bullets} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.experience[idx].bullets=e.target.value;setData(c);}} placeholder={"• Built new onboarding flow reducing drop-off by 30%\n• Led team of 4 engineers on dashboard redesign\n• Improved API response time by 50%"} height={100}/></div>
-                <Btn onClick={()=>enhanceBullets(idx)} disabled={enhancing===idx} color={`linear-gradient(135deg,${C.accent3},${C.accent})`} small>
-                  {enhancing===idx?"Enhancing...":"⚡ AI Enhance Bullets"}
-                </Btn>
-              </div>
-            ))}
-            <button onClick={()=>addItem("experience",{title:"",company:"",start:"",end:"",current:false,bullets:""})} style={{background:"transparent",border:`1px dashed ${C.accent3}66`,borderRadius:8,padding:"10px 20px",color:C.accent3,cursor:"pointer",fontSize:13,fontWeight:600,width:"100%",transition:"all 0.2s"}}>+ Add Position</button>
-          </Card>
-
-          {/* Education */}
-          <Card glow={C.warn}>
-            <SectionTitle color={C.warn}>🎓 Education</SectionTitle>
-            {data.education.map((edu,idx)=>(
-              <div key={edu.id} style={{background:"#0D1525",borderRadius:12,padding:16,marginBottom:12,border:`1px solid ${C.cardBorder}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                  <span style={{color:C.warn,fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700}}>DEGREE {idx+1}</span>
-                  {data.education.length>1&&<button onClick={()=>removeItem("education",edu.id)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>×</button>}
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  <div style={{gridColumn:"1/-1"}}><Label>Degree & Major</Label><Inp value={edu.degree} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.education[idx].degree=e.target.value;setData(c);}} placeholder="e.g. B.S. Computer Science"/></div>
-                  <div><Label>School</Label><Inp value={edu.school} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.education[idx].school=e.target.value;setData(c);}} placeholder="e.g. UC Berkeley"/></div>
-                  <div><Label>Graduation Year</Label><Inp value={edu.year} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.education[idx].year=e.target.value;setData(c);}} placeholder="e.g. 2022"/></div>
-                </div>
-              </div>
-            ))}
-            <button onClick={()=>addItem("education",{degree:"",school:"",year:"",gpa:""})} style={{background:"transparent",border:`1px dashed ${C.warn}66`,borderRadius:8,padding:"10px 20px",color:C.warn,cursor:"pointer",fontSize:13,fontWeight:600,width:"100%",transition:"all 0.2s"}}>+ Add Education</button>
-          </Card>
-
-          {/* Skills */}
-          <Card glow={C.pink}>
-            <SectionTitle color={C.pink}>⚡ Skills</SectionTitle>
-            <TArea value={data.skills} onChange={e=>setField("skills",e.target.value)} placeholder="e.g. React, TypeScript, Node.js, Python, AWS, Docker, PostgreSQL, GraphQL..." height={80}/>
-          </Card>
-
-          {/* Projects */}
-          <Card glow={C.accent2}>
-            <SectionTitle color={C.accent2}>🚀 Projects</SectionTitle>
-            {data.projects.map((proj,idx)=>(
-              <div key={proj.id} style={{background:"#0D1525",borderRadius:12,padding:16,marginBottom:12,border:`1px solid ${C.cardBorder}`}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                  <span style={{color:C.accent2,fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700}}>PROJECT {idx+1}</span>
-                  {data.projects.length>1&&<button onClick={()=>removeItem("projects",proj.id)} style={{background:"none",border:"none",color:C.danger,cursor:"pointer",fontSize:16}}>×</button>}
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-                  <div><Label>Project Name</Label><Inp value={proj.name} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.projects[idx].name=e.target.value;setData(c);}} placeholder="e.g. CareerPulse"/></div>
-                  <div><Label>Tech Stack</Label><Inp value={proj.tech} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.projects[idx].tech=e.target.value;setData(c);}} placeholder="e.g. React, Firebase, Claude AI"/></div>
-                </div>
-                <div><Label>Description</Label><TArea value={proj.desc} onChange={e=>{const c=JSON.parse(JSON.stringify(data));c.projects[idx].desc=e.target.value;setData(c);}} placeholder="What did you build and what impact did it have?" height={70}/></div>
-              </div>
-            ))}
-            <button onClick={()=>addItem("projects",{name:"",tech:"",desc:""})} style={{background:"transparent",border:`1px dashed ${C.accent2}66`,borderRadius:8,padding:"10px 20px",color:C.accent2,cursor:"pointer",fontSize:13,fontWeight:600,width:"100%",transition:"all 0.2s"}}>+ Add Project</button>
-          </Card>
-
-          <Btn onClick={()=>setView("preview")} color={`linear-gradient(135deg,${C.accent2},${C.accent})`}>👁 Preview Resume</Btn>
-        </div>
-      ) : (
-        /* PREVIEW */
-        <Card style={{background:"#fff",color:"#111",padding:0,overflow:"hidden"}} id="resume-preview">
-          <div style={{padding:"40px 48px",fontFamily:"Georgia,serif",color:"#111",lineHeight:1.5}}>
-            {/* Header */}
-            <div style={{borderBottom:"2px solid #111",paddingBottom:16,marginBottom:20}}>
-              <div style={{fontSize:28,fontWeight:700,letterSpacing:-0.5,marginBottom:4}}>{data.name||"Your Name"}</div>
-              <div style={{fontSize:13,color:"#444",display:"flex",flexWrap:"wrap",gap:16}}>
-                {data.email&&<span>✉ {data.email}</span>}
-                {data.phone&&<span>📞 {data.phone}</span>}
-                {data.location&&<span>📍 {data.location}</span>}
-                {data.linkedin&&<span>🔗 {data.linkedin}</span>}
-              </div>
-            </div>
-
-            {/* Summary */}
-            {data.summary&&<div style={{marginBottom:20}}>
-              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:8,color:"#333"}}>Summary</div>
-              <div style={{fontSize:13,lineHeight:1.7,color:"#333"}}>{data.summary}</div>
-            </div>}
-
-            {/* Experience */}
-            {data.experience.some(e=>e.title)&&<div style={{marginBottom:20}}>
-              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:12,color:"#333",borderBottom:"1px solid #ddd",paddingBottom:6}}>Experience</div>
-              {data.experience.filter(e=>e.title).map((exp,i)=>(
-                <div key={i} style={{marginBottom:16}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-                    <div style={{fontWeight:700,fontSize:14}}>{exp.title}</div>
-                    <div style={{fontSize:12,color:"#666"}}>{exp.start}{exp.end?` – ${exp.end}`:""}</div>
-                  </div>
-                  <div style={{fontSize:13,color:"#555",marginBottom:6,fontStyle:"italic"}}>{exp.company}</div>
-                  <div style={{fontSize:13,color:"#333",lineHeight:1.7,whiteSpace:"pre-wrap"}}>{exp.bullets}</div>
-                </div>
-              ))}
-            </div>}
-
-            {/* Education */}
-            {data.education.some(e=>e.school)&&<div style={{marginBottom:20}}>
-              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:12,color:"#333",borderBottom:"1px solid #ddd",paddingBottom:6}}>Education</div>
-              {data.education.filter(e=>e.school).map((edu,i)=>(
-                <div key={i} style={{marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-                  <div><div style={{fontWeight:700,fontSize:14}}>{edu.degree}</div><div style={{fontSize:13,color:"#555",fontStyle:"italic"}}>{edu.school}</div></div>
-                  <div style={{fontSize:12,color:"#666"}}>{edu.year}</div>
-                </div>
-              ))}
-            </div>}
-
-            {/* Projects */}
-            {data.projects.some(p=>p.name)&&<div style={{marginBottom:20}}>
-              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:12,color:"#333",borderBottom:"1px solid #ddd",paddingBottom:6}}>Projects</div>
-              {data.projects.filter(p=>p.name).map((proj,i)=>(
-                <div key={i} style={{marginBottom:12}}>
-                  <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:4}}>
-                    <span style={{fontWeight:700,fontSize:14}}>{proj.name}</span>
-                    {proj.tech&&<span style={{fontSize:12,color:"#666"}}>— {proj.tech}</span>}
-                  </div>
-                  <div style={{fontSize:13,color:"#333",lineHeight:1.7}}>{proj.desc}</div>
-                </div>
-              ))}
-            </div>}
-
-            {/* Skills */}
-            {data.skills&&<div>
-              <div style={{fontSize:13,fontWeight:700,textTransform:"uppercase",letterSpacing:2,marginBottom:8,color:"#333",borderBottom:"1px solid #ddd",paddingBottom:6}}>Skills</div>
-              <div style={{fontSize:13,color:"#333",lineHeight:1.7}}>{data.skills}</div>
-            </div>}
-          </div>
-        </Card>
-      )}
+      {result?.error&&<Card glow={C.danger}><div style={{color:C.danger,textAlign:"center"}}>Optimization failed. Please try again.</div></Card>}
     </div>
   );
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function CareerPulseApp({ user, onSignOut }) {
-  const [tab, setTab] = useState("Dashboard");
-  const [dashJobs, setDashJobs] = useState([]);
-  useEffect(() => {
-    if (!user) return;
-    const unsub = subscribeToJobs(user.uid, setDashJobs);
-    return unsub;
-  }, [user]);
+  const [tab, setTab] = useState("Dashboard"); const [lang, setLang] = useState("en"); const [deadlineJobs, setDeadlineJobs] = useState([]);
 
-  const tabs = [{l:"Dashboard",i:"⚡"},{l:"Resume AI",i:"✦"},{l:"Interview Prep",i:"🎯"},{l:"Career Path",i:"🚀"},{l:"Job Tracker",i:"📊"},{l:"Resume Builder",i:"📄"},{l:"Salary Insights",i:"💰"},{l:"Cover Letter",i:"✉️"},{l:"Job Search",i:"🔍"},{l:"LinkedIn",i:"🔗"}];
-
+  useEffect(()=>{ if(!user) return; const unsub=subscribeToJobs(user.uid,jobs=>setDeadlineJobs(jobs)); return ()=>unsub(); },[user]);
+  const tabs = [{i:"⚡",l:"Dashboard"},{i:"✦",l:"Resume AI"},{i:"🎯",l:"Interview Prep"},{i:"🚀",l:"Career Path"},{i:"📊",l:"Job Tracker"},{i:"💰",l:"Salary Insights"},{i:"✉️",l:"Cover Letter"},{i:"🔗",l:"LinkedIn"}];
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
         body{background:#0A0E1A;}
         ::-webkit-scrollbar{width:4px;}
@@ -1002,21 +617,20 @@ export default function CareerPulseApp({ user, onSignOut }) {
               </button>
             ))}
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>{user?(<><img src={user.photoURL} alt="" style={{width:30,height:30,borderRadius:"50%",border:`1px solid ${C.accent}44`}}/><button onClick={onSignOut} style={{background:"none",border:`1px solid ${C.cardBorder}`,borderRadius:6,padding:"4px 10px",color:C.muted,cursor:"pointer",fontSize:11,fontFamily:"'DM Mono',monospace"}}>Sign out</button></>):(<div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent2},${C.accent})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff"}}>?</div>)}</div>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent2},${C.accent})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>{user?.displayName?.[0]||"J"}</div>
+            <button onClick={onSignOut} style={{background:"transparent",border:`1px solid ${C.danger}44`,color:C.danger,borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>Sign Out</button>
+          </div>
         </div>
-
-        {/* Content */}
         <div style={{maxWidth:940,margin:"0 auto",padding:"28px 20px"}}>
           <div key={tab} style={{animation:"fadeUp 0.4s ease"}}>
-            {tab==="Dashboard"       && <Dashboard setTab={setTab} deadlineJobs={dashJobs}/>}
+            {tab==="Dashboard"       && <Dashboard setTab={setTab} deadlineJobs={deadlineJobs}/>}
             {tab==="Resume AI"       && <ResumeAI/>}
             {tab==="Interview Prep"  && <InterviewPrep/>}
             {tab==="Career Path"     && <CareerPath/>}
             {tab==="Job Tracker"     && <JobTracker user={user}/>}
-            {tab==="Resume Builder"  && <ResumeBuilder user={user}/>}
             {tab==="Salary Insights" && <SalaryInsights/>}
-            {tab==="Cover Letter"    && <CoverLetter/>}
-            {tab==="Job Search"      && <JobSearch user={user}/>}
+            {tab==="Cover Letter"    && <CoverLetter user={user}/>}
             {tab==="LinkedIn"        && <LinkedIn/>}
           </div>
         </div>
