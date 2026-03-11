@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react"; import { subscribeToJobs } from "./db.js";
+﻿import { useState, useEffect, useRef } from "react"; import { subscribeToJobs, addJob as addJobFn, deleteJob, updateJob } from "./db.js";
 
 const C = {
   bg: "#0A0E1A", card: "#111827", cardBorder: "#1E2D45",
@@ -119,18 +119,18 @@ function AIChat({ systemPrompt, placeholder, height=320 }) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({ setTab, deadlineJobs=[] }) {
+function Dashboard({ setTab, deadlineJobs=[], lang="en" }) {
   const jobs=deadlineJobs;const total=jobs.length;const applied=jobs.filter(j=>j.status==="Applied").length;const interviews=jobs.filter(j=>j.status==="Interview").length;const offers=jobs.filter(j=>j.status==="Offer").length;const rejected=jobs.filter(j=>j.status==="Rejected").length;const offerRate=total>0?Math.round((offers/total)*100):0;const interviewRate=total>0?Math.round(((interviews+offers)/total)*100):0;const sc={Applied:C.accent,Interview:C.accent2,Offer:C.accent3,Rejected:C.danger};const stats=[{label:"Applications",value:total,suffix:"",color:C.accent},{label:"Interviews",value:interviews,suffix:"",color:C.accent2},{label:"Offers",value:offers,suffix:"",color:C.accent3},{label:"Offer Rate",value:offerRate,suffix:"%",color:C.warn}];
-
+  const DT={en:{morning:"Good Morning",afternoon:"Good Afternoon",evening:"Good Evening",fire:"Your Career is on Fire"},es:{morning:"Buenos Dias",afternoon:"Buenas Tardes",evening:"Buenas Noches",fire:"Tu Carrera esta en Llamas"},pt:{morning:"Bom Dia",afternoon:"Boa Tarde",evening:"Boa Noite",fire:"Sua Carreira esta em Chamas"},fr:{morning:"Bonjour",afternoon:"Bon Apres-midi",evening:"Bonsoir",fire:"Votre Carriere est en Feu"},de:{morning:"Guten Morgen",afternoon:"Guten Tag",evening:"Guten Abend",fire:"Ihre Karriere brennt"}};const dt=DT[lang]||DT.en;
   const tools = [{icon:"✦",label:"Resume AI",tab:"Resume AI",color:C.accent,desc:"Analyze & score"},{icon:"🎯",label:"Interview",tab:"Interview Prep",color:C.accent2,desc:"AI mock practice"},{icon:"💰",label:"Salary",tab:"Salary Insights",color:C.accent3,desc:"Know your worth"},{icon:"✉️",label:"Cover Letter",tab:"Cover Letter",color:C.warn,desc:"AI-crafted letters"},{icon:"🔗",label:"LinkedIn",tab:"LinkedIn",color:C.pink,desc:"Optimize profile"},{icon:"🚀",label:"Career Path",tab:"Career Path",color:C.accent,desc:"Plan your future"}];
   return (
     <div style={{display:"flex",flexDirection:"column",gap:24}}>
       <Card glow={C.accent} style={{background:"linear-gradient(135deg,#0D1A2E,#111827)",padding:"28px 32px"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
           <div>
-            <div style={{color:C.muted,fontSize:13,fontFamily:"'DM Mono',monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Good morning ✦</div>
-            <div style={{color:C.text,fontSize:26,fontWeight:800,letterSpacing:-0.5}}>Your Career is on Fire 🔥</div>
-            <div style={{color:C.muted,fontSize:14,marginTop:6}}>3 new job matches · 1 interview scheduled · Resume needs 2 updates</div>
+            <div style={{color:C.muted,fontSize:13,fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>{(()=>{const h=new Date().getHours();return h<12?dt.morning:h<17?dt.afternoon:dt.evening;})()} ✦</div>
+            <div style={{color:C.text,fontSize:26,fontWeight:800,letterSpacing:-0.5}}>{dt.fire} 🔥</div>
+            <div style={{color:C.muted,fontSize:14,marginTop:6}}>{total} jobs tracked · {interviews} interview{interviews!==1?"s":""} · {offers} offer{offers!==1?"s":""}</div>
           </div>
           <PulseRing color={C.accent} size={64}/>
         </div>
@@ -158,6 +158,18 @@ function Dashboard({ setTab, deadlineJobs=[] }) {
         </div>
       </div>
 
+      <div style={{marginBottom:4}}>
+        <div style={{color:C.muted,fontSize:11,fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>🏆 Achievements</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+          {[{icon:"🚀",label:"First App",desc:"Applied to first job",unlocked:total>=1},{icon:"🔥",label:"On a Roll",desc:"5+ applications",unlocked:total>=5},{icon:"💼",label:"Job Hunter",desc:"10+ applications",unlocked:total>=10},{icon:"🎯",label:"Interviewing",desc:"Got first interview",unlocked:interviews>=1},{icon:"⭐",label:"Interview Pro",desc:"3+ interviews",unlocked:interviews>=3},{icon:"💰",label:"Offer!",desc:"Got first offer",unlocked:offers>=1},{icon:"🏆",label:"Top Performer",desc:"50%+ offer rate",unlocked:offerRate>=50&&total>=4},{icon:"🌟",label:"Dream Chaser",desc:"20+ applications",unlocked:total>=20}].map((b,i)=>(
+            <div key={i} style={{background:b.unlocked?C.card:"#0D1525",border:"1px solid "+(b.unlocked?C.accent+"44":C.cardBorder),borderRadius:12,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,opacity:b.unlocked?1:0.4,minWidth:150}}>
+              <div style={{fontSize:22,filter:b.unlocked?"none":"grayscale(1)"}}>{b.icon}</div>
+              <div><div style={{color:b.unlocked?C.text:C.muted,fontSize:12,fontWeight:700}}>{b.label}</div><div style={{color:C.muted,fontSize:11}}>{b.desc}</div></div>
+              {b.unlocked&&<div style={{marginLeft:"auto",color:C.accent3,fontSize:11,fontWeight:700}}>✓</div>}
+            </div>
+          ))}
+        </div>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
         <Card glow={C.accent}>
           <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:16}}>📈 Job Status Breakdown</div>
@@ -227,6 +239,62 @@ function ResumeAI() {
   );
 }
 
+// ─── JOB MATCH ────────────────────────────────────────────────────────────────
+function JobMatch() {
+  const [resume, setResume] = useState("");
+  const [jobDesc, setJobDesc] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  async function analyze() {
+    if (!resume.trim()||!jobDesc.trim()) return;
+    setLoading(true); setResult(null);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:`You are an ATS system. Return ONLY valid JSON: {"matchScore":number,"skillsMatch":[string],"skillsMissing":[string],"recommendation":string,"verdict":string}`,messages:[{role:"user",content:"Resume:\n"+resume+"\n\nJob:\n"+jobDesc}]})});
+      const data = await res.json();
+      const text = data.content?.find(b=>b.type==="text")?.text||"{}";
+      setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
+    } catch(e) { setResult({error:true}); }
+    setLoading(false);
+  }
+  const score = result?.matchScore||0;
+  const color = score>=80?C.accent3:score>=60?C.warn:C.danger;
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      <Card glow={C.accent2}>
+        <div style={{color:C.text,fontWeight:700,fontSize:16,marginBottom:4}}>🤖 AI Job Match Score</div>
+        <div style={{color:C.muted,fontSize:13,marginBottom:16}}>Paste your resume + job description to get your match %</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <TArea value={resume} onChange={e=>setResume(e.target.value)} placeholder="Paste your resume..." height={140}/>
+          <TArea value={jobDesc} onChange={e=>setJobDesc(e.target.value)} placeholder="Paste job description..." height={140}/>
+        </div>
+        <div style={{marginTop:12}}><Btn onClick={analyze} disabled={loading||!resume.trim()||!jobDesc.trim()}>{loading?"Analyzing...":"🤖 Get Match Score"}</Btn></div>
+      </Card>
+      {result&&!result.error&&(
+        <div style={{display:"flex",flexDirection:"column",gap:16,animation:"fadeUp 0.5s ease"}}>
+          <Card glow={color}>
+            <div style={{display:"flex",alignItems:"center",gap:20,flexWrap:"wrap"}}>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:52,fontWeight:800,color,fontFamily:"monospace",lineHeight:1}}>{score}%</div>
+                <div style={{color:C.muted,fontSize:12,marginTop:4}}>Match Score</div>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{color:color,fontWeight:700,fontSize:16,marginBottom:6}}>{result.verdict}</div>
+                <div style={{color:C.muted,fontSize:13,lineHeight:1.6}}>{result.recommendation}</div>
+              </div>
+            </div>
+            <div style={{marginTop:12,height:8,background:"#0D1525",borderRadius:8}}><div style={{height:"100%",width:score+"%",background:color,borderRadius:8,transition:"width 1s"}}/></div>
+          </Card>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+            <Card glow={C.accent3}><div style={{color:C.accent3,fontWeight:700,fontSize:14,marginBottom:12}}>✓ Matching Skills</div>{result.skillsMatch?.map((s,i)=><div key={i} style={{color:C.text,fontSize:13,marginBottom:8,paddingLeft:12,borderLeft:"2px solid "+C.accent3}}>{s}</div>)}</Card>
+            <Card glow={C.danger}><div style={{color:C.danger,fontWeight:700,fontSize:14,marginBottom:12}}>✗ Missing Skills</div>{result.skillsMissing?.map((s,i)=><div key={i} style={{color:C.text,fontSize:13,marginBottom:8,paddingLeft:12,borderLeft:"2px solid "+C.danger}}>{s}</div>)}</Card>
+          </div>
+        </div>
+      )}
+      {result?.error&&<Card glow={C.danger}><div style={{color:C.danger,textAlign:"center"}}>Analysis failed. Please try again.</div></Card>}
+    </div>
+  );
+}
+
 // ─── INTERVIEW PREP ───────────────────────────────────────────────────────────
 function InterviewPrep() {
   const topics = ["Behavioral","Technical","System Design","Leadership","Culture Fit"];
@@ -259,21 +327,21 @@ function CareerPath() {
 }
 
 // ─── JOB TRACKER ─────────────────────────────────────────────────────────────
-function JobTracker() {
-  const [jobs, setJobs] = useState([
-    {id:1,title:"Senior Frontend Engineer",company:"Stripe",status:"Interview",date:"Mar 5",salary:"$180k",notes:"2nd round scheduled"},
-    {id:2,title:"Product Designer",company:"Linear",status:"Applied",date:"Mar 3",salary:"$140k",notes:"Dream company"},
-    {id:3,title:"Full Stack Developer",company:"Vercel",status:"Offer",date:"Feb 28",salary:"$160k",notes:"Offer expires Mar 15"},
-    {id:4,title:"UI Engineer",company:"Figma",status:"Rejected",date:"Feb 22",salary:"$150k",notes:"Got to final round"},
-  ]);
+function JobTracker({ user }) {
+  const [jobs, setJobs] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({title:"",company:"",status:"Applied",salary:"",notes:""});
+  const [form, setForm] = useState({title:"",company:"",status:"Applied",salary:"",notes:"",deadline:""});
   const sc = {Applied:C.accent,Interview:C.accent2,Offer:C.accent3,Rejected:C.danger};
+  useEffect(()=>{ if(!user) return; const unsub=subscribeToJobs(user.uid,j=>setJobs(j)); return ()=>unsub(); },[user]);
 
-  function addJob() {
+
+
+
+
+  async function addJob() {
     if (!form.title||!form.company) return;
-    setJobs(p=>[...p,{...form,id:Date.now(),date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}]);
-    setForm({title:"",company:"",status:"Applied",salary:"",notes:""}); setShowAdd(false);
+    await addJobFn(user.uid,{...form,date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})});
+    setForm({title:"",company:"",status:"Applied",salary:"",notes:"",deadline:""}); setShowAdd(false);
   }
 
   return (
@@ -293,7 +361,7 @@ function JobTracker() {
         </div>
         {showAdd&&(
           <div style={{background:"#0D1525",borderRadius:12,padding:16,marginBottom:16,display:"flex",flexDirection:"column",gap:10}}>
-            {[["Job Title","title"],["Company","company"],["Salary","salary"],["Notes","notes"]].map(([ph,key])=><input key={key} placeholder={ph} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none"}}/>)}
+            {[["Job Title","title"],["Company","company"],["Salary","salary"],["Notes","notes"]].map(([ph,key])=><input key={key} placeholder={ph} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none"}}/>)}<input type="date" value={form.deadline} onChange={e=>setForm(f=>({...f,deadline:e.target.value}))} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none"}}/>
             <select value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))} style={{background:C.card,border:`1px solid ${C.cardBorder}`,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none"}}>
               {["Applied","Interview","Offer","Rejected"].map(s=><option key={s}>{s}</option>)}
             </select>
@@ -310,7 +378,7 @@ function JobTracker() {
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <Badge label={j.status} color={sc[j.status]}/>
-                <button onClick={()=>setJobs(p=>p.filter(x=>x.id!==j.id))} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:16}}>×</button>
+                {j.deadline&&<button onClick={()=>addToGoogleCalendar(j)} style={{background:"none",border:`1px solid ${C.accent2}44`,borderRadius:6,color:C.accent2,cursor:"pointer",fontSize:10,padding:"3px 7px"}}>📅</button>}<button onClick={()=>deleteJob(user.uid,j.id)} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:16}}>×</button>
               </div>
             </div>
           ))}
@@ -586,19 +654,27 @@ function LinkedIn() {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
+function addToGoogleCalendar(job) {
+  const title = encodeURIComponent("Apply to: " + job.title + " at " + job.company);
+  const date = job.deadline ? job.deadline.replace(/-/g,"") : new Date().toISOString().slice(0,10).replace(/-/g,"");
+  const details = encodeURIComponent("Job application deadline tracked via CareerPulse");
+  const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${date}/${date}&details=${details}`;
+  window.open(url, "_blank");
+}
+
 export default function CareerPulseApp({ user, onSignOut }) {
   const [tab, setTab] = useState("Dashboard"); const [lang, setLang] = useState("en"); const [deadlineJobs, setDeadlineJobs] = useState([]);
 
   useEffect(()=>{ if(!user) return; const unsub=subscribeToJobs(user.uid,jobs=>setDeadlineJobs(jobs)); return ()=>unsub(); },[user]);
-  const tabs = [{i:"⚡",l:"Dashboard"},{i:"✦",l:"Resume AI"},{i:"🎯",l:"Interview Prep"},{i:"🚀",l:"Career Path"},{i:"📊",l:"Job Tracker"},{i:"💰",l:"Salary Insights"},{i:"✉️",l:"Cover Letter"},{i:"🔗",l:"LinkedIn"}];
+  const T = {en:{dash:"Dashboard",resume:"Resume AI",interview:"Interview Prep",career:"Career Path",jobs:"Job Tracker",salary:"Salary Insights",cover:"Cover Letter",linkedin:"LinkedIn",morning:"Good Morning",afternoon:"Good Afternoon",evening:"Good Evening",fire:"Your Career is on Fire",signout:"Sign Out"},es:{dash:"Inicio",resume:"CV con IA",interview:"Entrevistas",career:"Carrera",jobs:"Empleos",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Buenos Dias",afternoon:"Buenas Tardes",evening:"Buenas Noches",fire:"Tu Carrera esta en Llamas",signout:"Cerrar Sesion"},pt:{dash:"Inicio",resume:"CV com IA",interview:"Entrevistas",career:"Carreira",jobs:"Vagas",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Bom Dia",afternoon:"Boa Tarde",evening:"Boa Noite",fire:"Sua Carreira esta em Chamas",signout:"Sair"},fr:{dash:"Accueil",resume:"CV IA",interview:"Entretiens",career:"Carriere",jobs:"Emplois",salary:"Salaires",cover:"Lettre",linkedin:"LinkedIn",morning:"Bonjour",afternoon:"Bon Apres-midi",evening:"Bonsoir",fire:"Votre Carriere est en Feu",signout:"Deconnexion"},de:{dash:"Dashboard",resume:"Lebenslauf KI",interview:"Vorstellungen",career:"Karriere",jobs:"Stellen",salary:"Gehalter",cover:"Anschreiben",linkedin:"LinkedIn",morning:"Guten Morgen",afternoon:"Guten Tag",evening:"Guten Abend",fire:"Ihre Karriere brennt",signout:"Abmelden"}};
+  const LANGS = {en:{flag:"🇺🇸",name:"EN"},es:{flag:"🇪🇸",name:"ES"},pt:{flag:"🇧🇷",name:"PT"},fr:{flag:"🇫🇷",name:"FR"},de:{flag:"🇩🇪",name:"DE"}};
+  const t = T[lang]||T.en;
+  const tabs = [{i:"⚡",l:t.dash,k:"Dashboard"},{i:"✦",l:t.resume,k:"Resume AI"},{i:"🎯",l:t.interview,k:"Interview Prep"},{i:"🚀",l:t.career,k:"Career Path"},{i:"📊",l:t.jobs,k:"Job Tracker"},{i:"💰",l:t.salary,k:"Salary Insights"},{i:"✉️",l:t.cover,k:"Cover Letter"},{i:"🔗",l:t.linkedin,k:"LinkedIn"},{i:"🤖",l:"Job Match",k:"Job Match"}];
   return (
     <>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0;}
         body{background:#0A0E1A;}
-        ::-webkit-scrollbar{width:4px;}
-        ::-webkit-scrollbar-thumb{background:#1E2D45;border-radius:4px;}
-        @keyframes pulseRing{0%{transform:scale(0.5);opacity:0.8;}100%{transform:scale(2);opacity:0;}}
         @keyframes bounce{0%,80%,100%{transform:translateY(0);}40%{transform:translateY(-8px);}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
       `}</style>
@@ -611,20 +687,21 @@ export default function CareerPulseApp({ user, onSignOut }) {
             <span style={{fontSize:17,fontWeight:800,color:C.text,letterSpacing:-0.5}}>Career<span style={{color:C.accent}}>Pulse</span></span>
           </div>
           <div style={{display:"flex",gap:2,flexWrap:"wrap",justifyContent:"center"}}>
-            {tabs.map(t=>(
-              <button key={t.l} onClick={()=>setTab(t.l)} style={{padding:"6px 10px",borderRadius:8,border:"none",cursor:"pointer",background:tab===t.l?`${C.accent}18`:"transparent",color:tab===t.l?C.accent:C.muted,fontSize:11,fontWeight:tab===t.l?700:500,borderBottom:tab===t.l?`2px solid ${C.accent}`:"2px solid transparent",transition:"all 0.2s",whiteSpace:"nowrap"}}>
-                <span style={{marginRight:3}}>{t.i}</span>{t.l}
-              </button>
-            ))}
+            {tabs.map(t=>(<button key={t.k} onClick={()=>setTab(t.k)} style={{padding:"6px 10px",borderRadius:8,border:"none",cursor:"pointer",background:tab===t.k?`${C.accent}18`:"transparent",color:tab===t.k?C.accent:C.muted,fontSize:11,fontWeight:tab===t.k?700:500,borderBottom:tab===t.k?`2px solid ${C.accent}`:"2px solid transparent",transition:"all 0.2s",whiteSpace:"nowrap"}}><span style={{marginRight:3}}>{t.i}</span>{t.l}</button>))}
+
+
+
+
           </div>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent2},${C.accent})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>{user?.displayName?.[0]||"J"}</div>
-            <button onClick={onSignOut} style={{background:"transparent",border:`1px solid ${C.danger}44`,color:C.danger,borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>Sign Out</button>
+            {user?.photoURL?<img src={user.photoURL} style={{width:30,height:30,borderRadius:"50%",objectFit:"cover"}} alt=""/>:<div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent2},${C.accent})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff"}}>{(user?.displayName||user?.email||"?")[0].toUpperCase()}</div>}
+            <select value={lang} onChange={e=>setLang(e.target.value)} style={{background:"#0D1525",border:`1px solid ${C.cardBorder}`,color:C.text,borderRadius:8,padding:"4px 8px",fontSize:11,cursor:"pointer"}}>{Object.entries(LANGS).map(([k,v])=>(<option key={k} value={k}>{v.flag} {v.name}</option>))}</select>
+            <button onClick={onSignOut} style={{background:"transparent",border:`1px solid ${C.danger}44`,color:C.danger,borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>{t.signout}</button>
           </div>
         </div>
         <div style={{maxWidth:940,margin:"0 auto",padding:"28px 20px"}}>
           <div key={tab} style={{animation:"fadeUp 0.4s ease"}}>
-            {tab==="Dashboard"       && <Dashboard setTab={setTab} deadlineJobs={deadlineJobs}/>}
+            {tab==="Dashboard"       && <Dashboard setTab={setTab} deadlineJobs={deadlineJobs} lang={lang}/>}
             {tab==="Resume AI"       && <ResumeAI/>}
             {tab==="Interview Prep"  && <InterviewPrep/>}
             {tab==="Career Path"     && <CareerPath/>}
@@ -632,6 +709,7 @@ export default function CareerPulseApp({ user, onSignOut }) {
             {tab==="Salary Insights" && <SalaryInsights/>}
             {tab==="Cover Letter"    && <CoverLetter user={user}/>}
             {tab==="LinkedIn"        && <LinkedIn/>}
+            {tab==="Job Match"       && <JobMatch/>}
           </div>
         </div>
       </div>
