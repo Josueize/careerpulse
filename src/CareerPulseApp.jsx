@@ -653,6 +653,14 @@ function ResumeBuilder() {
     setEnhancing(null);
   }
 
+  function downloadPDF() {
+    const style = document.createElement("style");
+    style.innerHTML = `@media print { body * { visibility: hidden; } #resume-preview, #resume-preview * { visibility: visible; } #resume-preview { position: fixed; left: 0; top: 0; width: 100%; } }`;
+    document.head.appendChild(style);
+    window.print();
+    document.head.removeChild(style);
+  }
+
   const Label = ({children}) => <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginBottom:5,letterSpacing:1,textTransform:"uppercase"}}>{children}</div>;
   const SectionTitle = ({children,color=C.accent}) => <div style={{color,fontWeight:700,fontSize:14,marginBottom:14,paddingBottom:8,borderBottom:`1px solid ${C.cardBorder}`,display:"flex",alignItems:"center",gap:8}}>{children}</div>;
 
@@ -669,6 +677,7 @@ function ResumeBuilder() {
             <button onClick={()=>setView(view==="edit"?"preview":"edit")} style={{background:view==="preview"?C.accent+"22":"#0D1525",border:`1px solid ${view==="preview"?C.accent:C.cardBorder}`,borderRadius:8,padding:"8px 16px",color:view==="preview"?C.accent:C.muted,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"'DM Mono',monospace",transition:"all 0.2s"}}>
               {view==="edit"?"👁 Preview":"✏️ Edit"}
             </button>
+            {view==="preview"&&<button onClick={downloadPDF} style={{background:`linear-gradient(135deg,${C.accent2},${C.accent})`,border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"'DM Mono',monospace"}}>⬇ Download PDF</button>}
           </div>
         </div>
       </Card>
