@@ -120,80 +120,80 @@ function AIChat({ systemPrompt, placeholder, height=320 }) {
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function Dashboard({ setTab, deadlineJobs=[], lang="en" }) {
-  const jobs=deadlineJobs;const total=jobs.length;const applied=jobs.filter(j=>j.status==="Applied").length;const interviews=jobs.filter(j=>j.status==="Interview").length;const offers=jobs.filter(j=>j.status==="Offer").length;const rejected=jobs.filter(j=>j.status==="Rejected").length;const offerRate=total>0?Math.round((offers/total)*100):0;const interviewRate=total>0?Math.round(((interviews+offers)/total)*100):0;const sc={Applied:C.accent,Interview:C.accent2,Offer:C.accent3,Rejected:C.danger};const stats=[{label:"Applications",value:total,suffix:"",color:C.accent},{label:"Interviews",value:interviews,suffix:"",color:C.accent2},{label:"Offers",value:offers,suffix:"",color:C.accent3},{label:"Offer Rate",value:offerRate,suffix:"%",color:C.warn}];
+  const jobs=deadlineJobs;const total=jobs.length;const applied=jobs.filter(j=>j.status==="Applied").length;const interviews=jobs.filter(j=>j.status==="Interview").length;const offers=jobs.filter(j=>j.status==="Offer").length;const rejected=jobs.filter(j=>j.status==="Rejected").length;const offerRate=total>0?Math.round((offers/total)*100):0;const sc={Applied:C.accent,Interview:C.accent2,Offer:C.accent3,Rejected:C.danger};const stats=[{label:"Applications",value:total,suffix:"",color:C.accent},{label:"Interviews",value:interviews,suffix:"",color:C.accent2},{label:"Offers",value:offers,suffix:"",color:C.accent3},{label:"Offer Rate",value:offerRate,suffix:"%",color:C.warn}];
   const DT={en:{morning:"Good Morning",afternoon:"Good Afternoon",evening:"Good Evening",fire:"Your Career is on Fire"},es:{morning:"Buenos Dias",afternoon:"Buenas Tardes",evening:"Buenas Noches",fire:"Tu Carrera esta en Llamas"},pt:{morning:"Bom Dia",afternoon:"Boa Tarde",evening:"Boa Noite",fire:"Sua Carreira esta em Chamas"},fr:{morning:"Bonjour",afternoon:"Bon Apres-midi",evening:"Bonsoir",fire:"Votre Carriere est en Feu"},de:{morning:"Guten Morgen",afternoon:"Guten Tag",evening:"Guten Abend",fire:"Ihre Karriere brennt"}};const dt=DT[lang]||DT.en;
-  const tools = [{icon:"✦",label:"Resume AI",tab:"Resume AI",color:C.accent,desc:"Analyze & score"},{icon:"🎯",label:"Interview",tab:"Interview Prep",color:C.accent2,desc:"AI mock practice"},{icon:"💰",label:"Salary",tab:"Salary Insights",color:C.accent3,desc:"Know your worth"},{icon:"✉️",label:"Cover Letter",tab:"Cover Letter",color:C.warn,desc:"AI-crafted letters"},{icon:"🔗",label:"LinkedIn",tab:"LinkedIn",color:C.pink,desc:"Optimize profile"},{icon:"🚀",label:"Career Path",tab:"Career Path",color:C.accent,desc:"Plan your future"}];
-  return (
-    <div style={{display:"flex",flexDirection:"column",gap:24}}>
-      <Card glow={C.accent} style={{background:"linear-gradient(135deg,#0D1A2E,#111827)",padding:"28px 32px"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
-          <div>
-            <div style={{color:C.muted,fontSize:13,fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>{(()=>{const h=new Date().getHours();return h<12?dt.morning:h<17?dt.afternoon:dt.evening;})()} ✦</div>
-            <div style={{color:C.text,fontSize:26,fontWeight:800,letterSpacing:-0.5}}>{dt.fire} 🔥</div>
-            <div style={{color:C.muted,fontSize:14,marginTop:6}}>{total} jobs tracked · {interviews} interview{interviews!==1?"s":""} · {offers} offer{offers!==1?"s":""}</div>
-          </div>
-          <PulseRing color={C.accent} size={64}/>
-        </div>
-      </Card>
-
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:14}}>
-        {stats.map((s,i)=>(
-          <Card key={i} glow={s.color} style={{textAlign:"center",padding:"18px 12px"}}>
-            <div style={{fontSize:30,fontWeight:800,color:s.color,fontFamily:"'DM Mono',monospace"}}><AnimatedNumber value={s.value} suffix={s.suffix}/></div>
-            <div style={{color:C.muted,fontSize:11,marginTop:4,fontFamily:"'DM Mono',monospace",letterSpacing:1,textTransform:"uppercase"}}>{s.label}</div>
-          </Card>
-        ))}
-      </div>
-
-      <div>
-        <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Quick Tools</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12}}>
-          {tools.map((t,i)=>(
-            <button key={i} onClick={()=>setTab(t.tab)} style={{background:C.card,border:`1px solid ${t.color}33`,borderRadius:12,padding:"16px 10px",cursor:"pointer",textAlign:"center",transition:"all 0.2s",display:"flex",flexDirection:"column",alignItems:"center",gap:6}} onMouseEnter={e=>{e.currentTarget.style.borderColor=t.color+"88";e.currentTarget.style.background=t.color+"11";}} onMouseLeave={e=>{e.currentTarget.style.borderColor=t.color+"33";e.currentTarget.style.background=C.card;}}>
-              <div style={{fontSize:22}}>{t.icon}</div>
-              <div style={{color:C.text,fontSize:12,fontWeight:700}}>{t.label}</div>
-              <div style={{color:C.muted,fontSize:11}}>{t.desc}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{marginBottom:4}}>
-        <div style={{color:C.muted,fontSize:11,fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>🏆 Achievements</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
-          {[{icon:"🚀",label:"First App",desc:"Applied to first job",unlocked:total>=1},{icon:"🔥",label:"On a Roll",desc:"5+ applications",unlocked:total>=5},{icon:"💼",label:"Job Hunter",desc:"10+ applications",unlocked:total>=10},{icon:"🎯",label:"Interviewing",desc:"Got first interview",unlocked:interviews>=1},{icon:"⭐",label:"Interview Pro",desc:"3+ interviews",unlocked:interviews>=3},{icon:"💰",label:"Offer!",desc:"Got first offer",unlocked:offers>=1},{icon:"🏆",label:"Top Performer",desc:"50%+ offer rate",unlocked:offerRate>=50&&total>=4},{icon:"🌟",label:"Dream Chaser",desc:"20+ applications",unlocked:total>=20}].map((b,i)=>(
-            <div key={i} style={{background:b.unlocked?C.card:"#0D1525",border:"1px solid "+(b.unlocked?C.accent+"44":C.cardBorder),borderRadius:12,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,opacity:b.unlocked?1:0.4,minWidth:150}}>
-              <div style={{fontSize:22,filter:b.unlocked?"none":"grayscale(1)"}}>{b.icon}</div>
-              <div><div style={{color:b.unlocked?C.text:C.muted,fontSize:12,fontWeight:700}}>{b.label}</div><div style={{color:C.muted,fontSize:11}}>{b.desc}</div></div>
-              {b.unlocked&&<div style={{marginLeft:"auto",color:C.accent3,fontSize:11,fontWeight:700}}>✓</div>}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-        <Card glow={C.accent}>
-          <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:16}}>📈 Job Status Breakdown</div>
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {[{label:"Applied",val:applied,color:C.accent},{label:"Interview",val:interviews,color:C.accent2},{label:"Offer",val:offers,color:C.accent3},{label:"Rejected",val:rejected,color:C.danger}].map((s,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{color:C.muted,fontSize:13}}>{s.label}</span><span style={{color:s.color,fontWeight:700,fontSize:13}}>{s.val} job{s.val!==1?"s":""}</span></div>
-            ))}
-          </div>
-        </Card>
-        <Card>
-          <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:14}}>Recent Applications</div>
-          <div style={{display:"flex",flexDirection:"column",gap:11}}>
-            {jobs.map((j,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div><div style={{color:C.text,fontSize:13,fontWeight:600}}>{j.title}</div><div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace"}}>{j.company} · {j.date}</div></div>
-                <Badge label={j.status} color={j.statusColor}/>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
+  const tools=[{icon:"✦",label:"Resume AI",tab:"Resume AI",color:C.accent,desc:"Analyze & score"},{icon:"🎯",label:"Interview",tab:"Interview Prep",color:C.accent2,desc:"AI mock practice"},{icon:"💰",label:"Salary",tab:"Salary Insights",color:C.accent3,desc:"Know your worth"},{icon:"✉️",label:"Cover Letter",tab:"Cover Letter",color:C.warn,desc:"AI-crafted letters"},{icon:"🔗",label:"LinkedIn",tab:"LinkedIn",color:C.pink,desc:"Optimize profile"},{icon:"🚀",label:"Career Path",tab:"Career Path",color:C.accent,desc:"Plan your future"}];
+  const days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];const today=new Date();const weekData=days.map((_,i)=>{const d=new Date(today);d.setDate(today.getDate()-today.getDay()+i);const ds=d.toLocaleDateString("en-US",{month:"short",day:"numeric"});return{day:days[i],count:jobs.filter(j=>j.date===ds).length,isToday:i===today.getDay()};});const maxCount=Math.max(...weekData.map(d=>d.count),1);
+  return (<div style={{display:"flex",flexDirection:"column",gap:24}}>
+    <Card glow={C.accent} style={{background:"linear-gradient(135deg,#0D1A2E,#111827)",padding:"28px 32px"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:16}}><div><div style={{color:C.muted,fontSize:13,fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>{(()=>{const h=new Date().getHours();return h<12?dt.morning:h<17?dt.afternoon:dt.evening;})()} ✦</div><div style={{color:C.text,fontSize:26,fontWeight:800,letterSpacing:-0.5}}>{dt.fire} 🔥</div><div style={{color:C.muted,fontSize:14,marginTop:6}}>{total} jobs tracked · {interviews} interview{interviews!==1?"s":""} · {offers} offer{offers!==1?"s":""}</div></div><PulseRing color={C.accent} size={64}/></div></Card>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:14}}>{stats.map((s,i)=>(<Card key={i} glow={s.color} style={{textAlign:"center",padding:"18px 12px"}}><div style={{fontSize:30,fontWeight:800,color:s.color,fontFamily:"monospace"}}><AnimatedNumber value={s.value} suffix={s.suffix}/></div><div style={{color:C.muted,fontSize:11,marginTop:4,letterSpacing:1,textTransform:"uppercase"}}>{s.label}</div></Card>))}</div>
+    <Card glow={C.accent2}><div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:16}}>📊 Weekly Activity</div><div style={{display:"flex",alignItems:"flex-end",gap:8,height:80,marginBottom:8}}>{weekData.map((d,i)=>(<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}><div style={{fontSize:11,color:d.count>0?C.accent2:C.muted,fontWeight:700}}>{d.count||""}</div><div style={{width:"100%",background:d.isToday?C.accent2:d.count>0?C.accent+"88":C.cardBorder,borderRadius:"4px 4px 0 0",height:Math.max((d.count/maxCount)*60,4)+"px",transition:"height 0.5s ease"}}/><div style={{fontSize:10,color:d.isToday?C.accent2:C.muted,fontWeight:d.isToday?700:400}}>{d.day}</div></div>))}</div><div style={{color:C.muted,fontSize:11,textAlign:"center"}}>Applications this week · {weekData.reduce((a,d)=>a+d.count,0)} total</div></Card>
+    <div><div style={{color:C.muted,fontSize:11,fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Quick Tools</div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12}}>{tools.map((t,i)=>(<button key={i} onClick={()=>setTab(t.tab)} style={{background:C.card,border:"1px solid "+t.color+"33",borderRadius:12,padding:"16px 10px",cursor:"pointer",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:6}}><div style={{fontSize:22}}>{t.icon}</div><div style={{color:C.text,fontSize:12,fontWeight:700}}>{t.label}</div><div style={{color:C.muted,fontSize:11}}>{t.desc}</div></button>))}</div></div>
+    <div><div style={{color:C.muted,fontSize:11,fontFamily:"monospace",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>🏆 Achievements</div><div style={{display:"flex",flexWrap:"wrap",gap:10}}>{[{icon:"🚀",label:"First App",desc:"Applied to first job",unlocked:total>=1},{icon:"🔥",label:"On a Roll",desc:"5+ applications",unlocked:total>=5},{icon:"💼",label:"Job Hunter",desc:"10+ applications",unlocked:total>=10},{icon:"🎯",label:"Interviewing",desc:"Got first interview",unlocked:interviews>=1},{icon:"⭐",label:"Interview Pro",desc:"3+ interviews",unlocked:interviews>=3},{icon:"💰",label:"Offer!",desc:"Got first offer",unlocked:offers>=1},{icon:"🏆",label:"Top Performer",desc:"50%+ offer rate",unlocked:offerRate>=50&&total>=4},{icon:"🌟",label:"Dream Chaser",desc:"20+ applications",unlocked:total>=20}].map((b,i)=>(<div key={i} style={{background:b.unlocked?C.card:"#0D1525",border:"1px solid "+(b.unlocked?C.accent+"44":C.cardBorder),borderRadius:12,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,opacity:b.unlocked?1:0.4,minWidth:150}}><div style={{fontSize:22,filter:b.unlocked?"none":"grayscale(1)"}}>{b.icon}</div><div><div style={{color:b.unlocked?C.text:C.muted,fontSize:12,fontWeight:700}}>{b.label}</div><div style={{color:C.muted,fontSize:11}}>{b.desc}</div></div>{b.unlocked&&<div style={{marginLeft:"auto",color:C.accent3,fontSize:11,fontWeight:700}}>✓</div>}</div>))}</div></div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}><Card glow={C.accent}><div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:16}}>📈 Job Status Breakdown</div><div style={{display:"flex",flexDirection:"column",gap:12}}>{[{label:"Applied",val:applied,color:C.accent},{label:"Interview",val:interviews,color:C.accent2},{label:"Offer",val:offers,color:C.accent3},{label:"Rejected",val:rejected,color:C.danger}].map((s,i)=>(<div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{color:C.muted,fontSize:13}}>{s.label}</span><span style={{color:s.color,fontWeight:700,fontSize:13}}>{s.val} job{s.val!==1?"s":""}</span></div>))}</div></Card><Card><div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:14}}>Recent Applications</div><div style={{display:"flex",flexDirection:"column",gap:11}}>{jobs.slice().reverse().slice(0,5).map((j,i)=>(<div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><div><div style={{color:C.text,fontSize:13,fontWeight:600}}>{j.title}</div><div style={{color:C.muted,fontSize:11}}>{j.company} · {j.date}</div></div><Badge label={j.status} color={sc[j.status]||C.accent}/></div>))}</div></Card></div>
+  </div>);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ─── RESUME AI ────────────────────────────────────────────────────────────────
 function ResumeAI() {
@@ -727,7 +727,7 @@ function addToGoogleCalendar(job) {
 
 export default function CareerPulseApp({ user, onSignOut }) {
   const [tab, setTab] = useState("Dashboard"); const [lang, setLang] = useState("en"); const [deadlineJobs, setDeadlineJobs] = useState([]); const [menuOpen, setMenuOpen] = useState(false);
-
+  useEffect(()=>{ if(!user) return; const unsub=subscribeToJobs(user.uid,jobs=>setDeadlineJobs(jobs)); return ()=>unsub(); },[user]);
 
   const T = {en:{dash:"Dashboard",resume:"Resume AI",interview:"Interview Prep",career:"Career Path",jobs:"Job Tracker",salary:"Salary Insights",cover:"Cover Letter",linkedin:"LinkedIn",morning:"Good Morning",afternoon:"Good Afternoon",evening:"Good Evening",fire:"Your Career is on Fire",signout:"Sign Out"},es:{dash:"Inicio",resume:"CV con IA",interview:"Entrevistas",career:"Carrera",jobs:"Empleos",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Buenos Dias",afternoon:"Buenas Tardes",evening:"Buenas Noches",fire:"Tu Carrera esta en Llamas",signout:"Cerrar Sesion"},pt:{dash:"Inicio",resume:"CV com IA",interview:"Entrevistas",career:"Carreira",jobs:"Vagas",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Bom Dia",afternoon:"Boa Tarde",evening:"Boa Noite",fire:"Sua Carreira esta em Chamas",signout:"Sair"},fr:{dash:"Accueil",resume:"CV IA",interview:"Entretiens",career:"Carriere",jobs:"Emplois",salary:"Salaires",cover:"Lettre",linkedin:"LinkedIn",morning:"Bonjour",afternoon:"Bon Apres-midi",evening:"Bonsoir",fire:"Votre Carriere est en Feu",signout:"Deconnexion"},de:{dash:"Dashboard",resume:"Lebenslauf KI",interview:"Vorstellungen",career:"Karriere",jobs:"Stellen",salary:"Gehalter",cover:"Anschreiben",linkedin:"LinkedIn",morning:"Guten Morgen",afternoon:"Guten Tag",evening:"Guten Abend",fire:"Ihre Karriere brennt",signout:"Abmelden"}};
   const LANGS = {en:{flag:"🇺🇸",name:"EN"},es:{flag:"🇪🇸",name:"ES"},pt:{flag:"🇧🇷",name:"PT"},fr:{flag:"🇫🇷",name:"FR"},de:{flag:"🇩🇪",name:"DE"}};
