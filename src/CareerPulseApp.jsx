@@ -239,6 +239,69 @@ function ResumeAI() {
   );
 }
 
+// ─── GMAIL SCANNER ───────────────────────────────────────────────────────────
+function GmailScanner({ user }) {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [saved, setSaved] = useState(false);
+
+  async function scanEmail() {
+    if (!email.trim()) return;
+    setLoading(true); setResult(null); setSaved(false);
+    try {
+      const res = await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:500,system:`You are a job application email parser. Extract job info from emails and return ONLY valid JSON: {"title":string,"company":string,"status":string,"notes":string} where status is one of: Applied, Interview, Offer, Rejected. If not a job email return {"error":"not a job email"}.`,messages:[{role:"user",content:"Parse this email:\n"+email}]})});
+      const data = await res.json();
+      const text = data.content?.find(b=>b.type==="text")?.text||"{}";
+      setResult(JSON.parse(text.replace(/```json|```/g,"").trim()));
+    } catch(e) { setResult({error:"parse failed"}); }
+    setLoading(false);
+  }
+
+  async function saveToTracker() {
+    if (!result||result.error||!user) return;
+    await addJobFn(user.uid,{...result,date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})});
+    setSaved(true);
+  }
+
+  const sc = {Applied:C.accent,Interview:C.accent2,Offer:C.accent3,Rejected:C.danger};
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      <Card glow={C.accent}>
+        <div style={{color:C.text,fontWeight:700,fontSize:16,marginBottom:4}}>📧 Gmail Job Scanner</div>
+        <div style={{color:C.muted,fontSize:13,marginBottom:16}}>Paste any job-related email — AI extracts the details and adds it to your tracker</div>
+        <TArea value={email} onChange={e=>setEmail(e.target.value)} placeholder={"Paste email content here...\n\nExample:\nSubject: Your application for Frontend Engineer at Stripe\n\nHi Josue, we received your application..."} height={180}/>
+        <div style={{marginTop:12}}><Btn onClick={scanEmail} disabled={loading||!email.trim()}>{loading?"Scanning...":"📧 Scan Email"}</Btn></div>
+      </Card>
+      {result&&!result.error&&(
+        <Card glow={C.accent2} style={{animation:"fadeUp 0.5s ease"}}>
+          <div style={{color:C.text,fontWeight:700,fontSize:15,marginBottom:16}}>✦ Extracted Job Info</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"10px 14px",background:"#0D1525",borderRadius:8}}>
+              <span style={{color:C.muted,fontSize:13}}>Position</span>
+              <span style={{color:C.text,fontSize:13,fontWeight:600}}>{result.title}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"10px 14px",background:"#0D1525",borderRadius:8}}>
+              <span style={{color:C.muted,fontSize:13}}>Company</span>
+              <span style={{color:C.text,fontSize:13,fontWeight:600}}>{result.company}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",padding:"10px 14px",background:"#0D1525",borderRadius:8}}>
+              <span style={{color:C.muted,fontSize:13}}>Status</span>
+              <Badge label={result.status} color={sc[result.status]||C.accent}/>
+            </div>
+            {result.notes&&<div style={{padding:"10px 14px",background:"#0D1525",borderRadius:8,color:C.muted,fontSize:12,fontStyle:"italic"}}>{result.notes}</div>}
+          </div>
+          <div style={{marginTop:16}}>
+            {saved?<div style={{color:C.accent3,fontWeight:700,fontSize:14}}>✓ Added to Job Tracker!</div>:<Btn onClick={saveToTracker} color={C.accent3}>+ Add to Job Tracker</Btn>}
+          </div>
+        </Card>
+      )}
+      {result?.error&&<Card glow={C.warn}><div style={{color:C.warn,textAlign:"center",fontSize:14}}>{result.error==="not a job email"?"This does not look like a job email. Try another one.":"Scan failed. Please try again."}</div></Card>}
+    </div>
+  );
+}
+
 // ─── JOB MATCH ────────────────────────────────────────────────────────────────
 function JobMatch() {
   const [resume, setResume] = useState("");
@@ -669,7 +732,7 @@ export default function CareerPulseApp({ user, onSignOut }) {
   const T = {en:{dash:"Dashboard",resume:"Resume AI",interview:"Interview Prep",career:"Career Path",jobs:"Job Tracker",salary:"Salary Insights",cover:"Cover Letter",linkedin:"LinkedIn",morning:"Good Morning",afternoon:"Good Afternoon",evening:"Good Evening",fire:"Your Career is on Fire",signout:"Sign Out"},es:{dash:"Inicio",resume:"CV con IA",interview:"Entrevistas",career:"Carrera",jobs:"Empleos",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Buenos Dias",afternoon:"Buenas Tardes",evening:"Buenas Noches",fire:"Tu Carrera esta en Llamas",signout:"Cerrar Sesion"},pt:{dash:"Inicio",resume:"CV com IA",interview:"Entrevistas",career:"Carreira",jobs:"Vagas",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Bom Dia",afternoon:"Boa Tarde",evening:"Boa Noite",fire:"Sua Carreira esta em Chamas",signout:"Sair"},fr:{dash:"Accueil",resume:"CV IA",interview:"Entretiens",career:"Carriere",jobs:"Emplois",salary:"Salaires",cover:"Lettre",linkedin:"LinkedIn",morning:"Bonjour",afternoon:"Bon Apres-midi",evening:"Bonsoir",fire:"Votre Carriere est en Feu",signout:"Deconnexion"},de:{dash:"Dashboard",resume:"Lebenslauf KI",interview:"Vorstellungen",career:"Karriere",jobs:"Stellen",salary:"Gehalter",cover:"Anschreiben",linkedin:"LinkedIn",morning:"Guten Morgen",afternoon:"Guten Tag",evening:"Guten Abend",fire:"Ihre Karriere brennt",signout:"Abmelden"}};
   const LANGS = {en:{flag:"🇺🇸",name:"EN"},es:{flag:"🇪🇸",name:"ES"},pt:{flag:"🇧🇷",name:"PT"},fr:{flag:"🇫🇷",name:"FR"},de:{flag:"🇩🇪",name:"DE"}};
   const t = T[lang]||T.en;
-  const tabs = [{i:"⚡",l:t.dash,k:"Dashboard"},{i:"✦",l:t.resume,k:"Resume AI"},{i:"🎯",l:t.interview,k:"Interview Prep"},{i:"🚀",l:t.career,k:"Career Path"},{i:"📊",l:t.jobs,k:"Job Tracker"},{i:"💰",l:t.salary,k:"Salary Insights"},{i:"✉️",l:t.cover,k:"Cover Letter"},{i:"🔗",l:t.linkedin,k:"LinkedIn"},{i:"🤖",l:"Job Match",k:"Job Match"}];
+  const tabs = [{i:"⚡",l:t.dash,k:"Dashboard"},{i:"✦",l:t.resume,k:"Resume AI"},{i:"🎯",l:t.interview,k:"Interview Prep"},{i:"🚀",l:t.career,k:"Career Path"},{i:"📊",l:t.jobs,k:"Job Tracker"},{i:"💰",l:t.salary,k:"Salary Insights"},{i:"✉️",l:t.cover,k:"Cover Letter"},{i:"🔗",l:t.linkedin,k:"LinkedIn"},{i:"🤖",l:"Job Match",k:"Job Match"},{i:"📧",l:"Gmail Scan",k:"Gmail Scan"}];
   return (
     <>
       <style>{`
@@ -710,6 +773,7 @@ export default function CareerPulseApp({ user, onSignOut }) {
             {tab==="Cover Letter"    && <CoverLetter user={user}/>}
             {tab==="LinkedIn"        && <LinkedIn/>}
             {tab==="Job Match"       && <JobMatch/>}
+            {tab==="Gmail Scan"      && <GmailScanner user={user}/>}
           </div>
         </div>
       </div>
