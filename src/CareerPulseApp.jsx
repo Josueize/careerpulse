@@ -239,6 +239,99 @@ function ResumeAI() {
   );
 }
 
+// ─── REFERRAL TRACKER ───────────────────────────────────────────────────────
+function ReferralTracker({ user }) {
+  const [referrals, setReferrals] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({name:"",company:"",role:"",relationship:"Friend",status:"To Contact",notes:""});
+  const sc = {"To Contact":C.accent,"Reached Out":C.accent2,"Referred":C.accent3,"Not Available":C.danger};
+  const relationships = ["Friend","Ex-Colleague","LinkedIn","Alumni","Mentor","Other"];
+  const statuses = ["To Contact","Reached Out","Referred","Not Available"];
+
+  useEffect(()=>{
+    const stored = localStorage.getItem("careerpulse_referrals_"+user?.uid);
+    if(stored) setReferrals(JSON.parse(stored));
+  },[user]);
+
+  function save(refs) {
+    setReferrals(refs);
+    localStorage.setItem("careerpulse_referrals_"+user?.uid, JSON.stringify(refs));
+  }
+
+  function addReferral() {
+    if(!form.name||!form.company) return;
+    save([...referrals,{...form,id:Date.now(),date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"})}]);
+    setForm({name:"",company:"",role:"",relationship:"Friend",status:"To Contact",notes:""});
+    setShowAdd(false);
+  }
+
+  function updateStatus(id, status) {
+    save(referrals.map(r=>r.id===id?{...r,status}:r));
+  }
+
+  function deleteReferral(id) {
+    save(referrals.filter(r=>r.id!==id));
+  }
+
+  const stats = statuses.map(s=>({label:s,count:referrals.filter(r=>r.status===s).length,color:sc[s]}));
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      <Card glow={C.pink}>
+        <div style={{color:C.text,fontWeight:700,fontSize:16,marginBottom:4}}>🤝 Referral Network</div>
+        <div style={{color:C.muted,fontSize:13,marginBottom:16}}>Track people who can refer you to jobs</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:16}}>
+          {stats.map((s,i)=>(<div key={i} style={{textAlign:"center",padding:"10px",background:"#0D1525",borderRadius:10,border:"1px solid "+s.color+"33"}}>
+            <div style={{fontSize:22,fontWeight:800,color:s.color}}>{s.count}</div>
+            <div style={{fontSize:10,color:C.muted,marginTop:2}}>{s.label}</div>
+          </div>))}
+        </div>
+        <Btn onClick={()=>setShowAdd(!showAdd)} small>+ Add Contact</Btn>
+      </Card>
+      {showAdd&&(
+        <Card glow={C.pink}>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {[["Name","name"],["Company","company"],["Their Role","role"],["Notes","notes"]].map(([ph,key])=>(
+              <input key={key} placeholder={ph} value={form[key]} onChange={e=>setForm(f=>({...f,[key]:e.target.value}))} style={{background:"#0D1525",border:"1px solid "+C.cardBorder,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none"}}/>
+            ))}
+            <select value={form.relationship} onChange={e=>setForm(f=>({...f,relationship:e.target.value}))} style={{background:"#0D1525",border:"1px solid "+C.cardBorder,borderRadius:8,padding:"8px 12px",color:C.text,fontSize:13,outline:"none"}}>
+              {relationships.map(r=><option key={r}>{r}</option>)}
+            </select>
+            <Btn onClick={addReferral} color={C.pink} small>Save Contact</Btn>
+          </div>
+        </Card>
+      )}
+      {referrals.length===0&&!showAdd&&(
+        <Card><div style={{textAlign:"center",color:C.muted,padding:"20px 0"}}>No contacts yet. Add someone who can refer you! 🤝</div></Card>
+      )}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {referrals.map(r=>(
+          <Card key={r.id} glow={sc[r.status]}>
+            <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                  <div style={{width:32,height:32,borderRadius:"50%",background:"linear-gradient(135deg,"+C.pink+","+C.accent2+")",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"#fff",flexShrink:0}}>{r.name[0].toUpperCase()}</div>
+                  <div>
+                    <div style={{color:C.text,fontWeight:700,fontSize:14}}>{r.name}</div>
+                    <div style={{color:C.muted,fontSize:11}}>{r.role?r.role+" at ":""}{r.company} · {r.relationship}</div>
+                  </div>
+                </div>
+                {r.notes&&<div style={{color:C.muted,fontSize:12,fontStyle:"italic",marginLeft:40}}>{r.notes}</div>}
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <select value={r.status} onChange={e=>updateStatus(r.id,e.target.value)} style={{background:"#0D1525",border:"1px solid "+sc[r.status]+"44",borderRadius:8,padding:"4px 8px",color:sc[r.status],fontSize:11,outline:"none",cursor:"pointer"}}>
+                  {statuses.map(s=><option key={s}>{s}</option>)}
+                </select>
+                <button onClick={()=>deleteReferral(r.id)} style={{background:"none",border:"none",color:C.muted,cursor:"pointer",fontSize:16}}>×</button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── GMAIL SCANNER ───────────────────────────────────────────────────────────
 function GmailScanner({ user }) {
   const [email, setEmail] = useState("");
@@ -732,7 +825,7 @@ export default function CareerPulseApp({ user, onSignOut }) {
   const T = {en:{dash:"Dashboard",resume:"Resume AI",interview:"Interview Prep",career:"Career Path",jobs:"Job Tracker",salary:"Salary Insights",cover:"Cover Letter",linkedin:"LinkedIn",morning:"Good Morning",afternoon:"Good Afternoon",evening:"Good Evening",fire:"Your Career is on Fire",signout:"Sign Out"},es:{dash:"Inicio",resume:"CV con IA",interview:"Entrevistas",career:"Carrera",jobs:"Empleos",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Buenos Dias",afternoon:"Buenas Tardes",evening:"Buenas Noches",fire:"Tu Carrera esta en Llamas",signout:"Cerrar Sesion"},pt:{dash:"Inicio",resume:"CV com IA",interview:"Entrevistas",career:"Carreira",jobs:"Vagas",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Bom Dia",afternoon:"Boa Tarde",evening:"Boa Noite",fire:"Sua Carreira esta em Chamas",signout:"Sair"},fr:{dash:"Accueil",resume:"CV IA",interview:"Entretiens",career:"Carriere",jobs:"Emplois",salary:"Salaires",cover:"Lettre",linkedin:"LinkedIn",morning:"Bonjour",afternoon:"Bon Apres-midi",evening:"Bonsoir",fire:"Votre Carriere est en Feu",signout:"Deconnexion"},de:{dash:"Dashboard",resume:"Lebenslauf KI",interview:"Vorstellungen",career:"Karriere",jobs:"Stellen",salary:"Gehalter",cover:"Anschreiben",linkedin:"LinkedIn",morning:"Guten Morgen",afternoon:"Guten Tag",evening:"Guten Abend",fire:"Ihre Karriere brennt",signout:"Abmelden"}};
   const LANGS = {en:{flag:"🇺🇸",name:"EN"},es:{flag:"🇪🇸",name:"ES"},pt:{flag:"🇧🇷",name:"PT"},fr:{flag:"🇫🇷",name:"FR"},de:{flag:"🇩🇪",name:"DE"}};
   const t = T[lang]||T.en;
-  const tabs = [{i:"⚡",l:t.dash,k:"Dashboard"},{i:"✦",l:t.resume,k:"Resume AI"},{i:"🎯",l:t.interview,k:"Interview Prep"},{i:"🚀",l:t.career,k:"Career Path"},{i:"📊",l:t.jobs,k:"Job Tracker"},{i:"💰",l:t.salary,k:"Salary Insights"},{i:"✉️",l:t.cover,k:"Cover Letter"},{i:"🔗",l:t.linkedin,k:"LinkedIn"},{i:"🤖",l:"Job Match",k:"Job Match"},{i:"📧",l:"Gmail Scan",k:"Gmail Scan"}];
+  const tabs = [{i:"⚡",l:t.dash,k:"Dashboard"},{i:"✦",l:t.resume,k:"Resume AI"},{i:"🎯",l:t.interview,k:"Interview Prep"},{i:"🚀",l:t.career,k:"Career Path"},{i:"📊",l:t.jobs,k:"Job Tracker"},{i:"💰",l:t.salary,k:"Salary Insights"},{i:"✉️",l:t.cover,k:"Cover Letter"},{i:"🔗",l:t.linkedin,k:"LinkedIn"},{i:"🤖",l:"Job Match",k:"Job Match"},{i:"📧",l:"Gmail Scan",k:"Gmail Scan"},{i:"🤝",l:"Referrals",k:"Referrals"}];
   return (
     <>
       <style>{`
@@ -780,6 +873,7 @@ export default function CareerPulseApp({ user, onSignOut }) {
             {tab==="LinkedIn"        && <LinkedIn/>}
             {tab==="Job Match"       && <JobMatch/>}
             {tab==="Gmail Scan"      && <GmailScanner user={user}/>}
+            {tab==="Referrals"        && <ReferralTracker user={user}/>}
           </div>
         </div>
       </div>
