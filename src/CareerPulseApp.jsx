@@ -45,25 +45,25 @@ function ScoreCircle({ score, label, color }) {
 }
 
 function Card({ children, style={}, glow }) {
-  return (
-    <div style={{ background:C.card, border:`1px solid ${glow?glow+"55":C.cardBorder}`, borderRadius:16, padding:"24px", boxShadow:glow?`0 0 30px ${glow}22,inset 0 1px 0 ${glow}22`:"0 4px 24px #00000044", ...style }}>
-      {children}
-    </div>
-  );
+  const [hovered, setHovered] = useState(false);
+  return <div onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} style={{background:`linear-gradient(135deg,${C.card},${C.bg})`,border:`1px solid ${glow?glow+"33":C.cardBorder}`,borderRadius:16,padding:"20px 22px",transition:"all 0.3s cubic-bezier(0.4,0,0.2,1)",boxShadow:hovered&&glow?`0 8px 32px ${glow}22,0 0 0 1px ${glow}22`:`0 2px 12px #00000044`,...style}}>{children}</div>;
 }
 
+
+
+
 function Badge({ label, color }) {
-  return <span style={{ background:color+"22", color, border:`1px solid ${color}44`, borderRadius:6, padding:"3px 10px", fontSize:11, fontFamily:"'DM Mono',monospace", letterSpacing:0.5, fontWeight:600 }}>{label}</span>;
+  return <span style={{background:color+"18",color,borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:700,letterSpacing:0.5,border:`1px solid ${color}33`,display:"inline-flex",alignItems:"center",gap:4}}>{label}</span>;
 }
 
 function Btn({ onClick, disabled, children, color, small }) {
-  return (
-    <button onClick={onClick} disabled={disabled} style={{ background:color||`linear-gradient(135deg,${C.accent2},${C.accent})`, border:"none", borderRadius:10, padding:small?"8px 16px":"12px 28px", color:"#fff", cursor:disabled?"not-allowed":"pointer", fontSize:small?12:14, fontWeight:700, fontFamily:"'Plus Jakarta Sans',sans-serif", opacity:disabled?0.6:1, boxShadow:`0 4px 20px ${C.accent}33`, transition:"opacity 0.2s" }}>{children}</button>
-  );
+  const bg=color||C.accent;
+  return <button onClick={onClick} disabled={disabled} style={{background:disabled?"#1A2744":`linear-gradient(135deg,${bg}22,${bg}11)`,border:`1px solid ${disabled?"#1A2744":bg+"66"}`,borderRadius:10,padding:small?"6px 14px":"10px 22px",color:disabled?C.muted:bg,fontSize:small?12:13,fontWeight:700,cursor:disabled?"not-allowed":"pointer",transition:"all 0.2s cubic-bezier(0.4,0,0.2,1)",letterSpacing:0.3,boxShadow:disabled?"none":`0 0 16px ${bg}22`}}>{children}</button>;
 }
 
+
 function TArea({ value, onChange, placeholder, height=140 }) {
-  return <textarea value={value} onChange={onChange} placeholder={placeholder} style={{ width:"100%", height, background:"#0D1525", border:`1px solid ${C.cardBorder}`, borderRadius:10, color:C.text, padding:"12px 14px", fontSize:13, fontFamily:"'Plus Jakarta Sans',sans-serif", resize:"vertical", outline:"none", boxSizing:"border-box", lineHeight:1.6 }}/>;
+  return <textarea value={value} onChange={onChange} placeholder={placeholder} style={{width:"100%",height,background:"#060B18",border:`1px solid ${C.cardBorder}`,borderRadius:10,padding:"12px 14px",color:C.text,fontSize:13,resize:"vertical",outline:"none",fontFamily:"inherit",lineHeight:1.6,transition:"border-color 0.2s",boxSizing:"border-box"}} onFocus={e=>e.target.style.borderColor=C.accent+"88"} onBlur={e=>e.target.style.borderColor=C.cardBorder}/>;
 }
 
 function Inp({ value, onChange, placeholder }) {
