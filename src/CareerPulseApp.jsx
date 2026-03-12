@@ -531,6 +531,7 @@ function JobTracker({ user }) {
                 <div style={{color:C.text,fontSize:14,fontWeight:600}}>{j.title}</div>
                 <div style={{color:C.muted,fontSize:11,fontFamily:"'DM Mono',monospace",marginTop:2}}>{j.company} · {j.date}{j.salary&&` · ${j.salary}`}</div>
                 {j.notes&&<div style={{color:C.muted,fontSize:11,marginTop:2,fontStyle:"italic"}}>{j.notes}</div>}
+                {j.interviewNotes&&<div style={{color:C.accent2,fontSize:11,marginTop:4,padding:"6px 10px",background:C.accent2+"11",borderRadius:6}}>📝 {j.interviewNotes}</div>}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <Badge label={j.status} color={sc[j.status]}/>
