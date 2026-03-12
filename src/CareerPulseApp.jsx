@@ -726,9 +726,9 @@ function addToGoogleCalendar(job) {
 }
 
 export default function CareerPulseApp({ user, onSignOut }) {
-  const [tab, setTab] = useState("Dashboard"); const [lang, setLang] = useState("en"); const [deadlineJobs, setDeadlineJobs] = useState([]);
+  const [tab, setTab] = useState("Dashboard"); const [lang, setLang] = useState("en"); const [deadlineJobs, setDeadlineJobs] = useState([]); const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(()=>{ if(!user) return; const unsub=subscribeToJobs(user.uid,jobs=>setDeadlineJobs(jobs)); return ()=>unsub(); },[user]);
+
   const T = {en:{dash:"Dashboard",resume:"Resume AI",interview:"Interview Prep",career:"Career Path",jobs:"Job Tracker",salary:"Salary Insights",cover:"Cover Letter",linkedin:"LinkedIn",morning:"Good Morning",afternoon:"Good Afternoon",evening:"Good Evening",fire:"Your Career is on Fire",signout:"Sign Out"},es:{dash:"Inicio",resume:"CV con IA",interview:"Entrevistas",career:"Carrera",jobs:"Empleos",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Buenos Dias",afternoon:"Buenas Tardes",evening:"Buenas Noches",fire:"Tu Carrera esta en Llamas",signout:"Cerrar Sesion"},pt:{dash:"Inicio",resume:"CV com IA",interview:"Entrevistas",career:"Carreira",jobs:"Vagas",salary:"Salarios",cover:"Carta",linkedin:"LinkedIn",morning:"Bom Dia",afternoon:"Boa Tarde",evening:"Boa Noite",fire:"Sua Carreira esta em Chamas",signout:"Sair"},fr:{dash:"Accueil",resume:"CV IA",interview:"Entretiens",career:"Carriere",jobs:"Emplois",salary:"Salaires",cover:"Lettre",linkedin:"LinkedIn",morning:"Bonjour",afternoon:"Bon Apres-midi",evening:"Bonsoir",fire:"Votre Carriere est en Feu",signout:"Deconnexion"},de:{dash:"Dashboard",resume:"Lebenslauf KI",interview:"Vorstellungen",career:"Karriere",jobs:"Stellen",salary:"Gehalter",cover:"Anschreiben",linkedin:"LinkedIn",morning:"Guten Morgen",afternoon:"Guten Tag",evening:"Guten Abend",fire:"Ihre Karriere brennt",signout:"Abmelden"}};
   const LANGS = {en:{flag:"🇺🇸",name:"EN"},es:{flag:"🇪🇸",name:"ES"},pt:{flag:"🇧🇷",name:"PT"},fr:{flag:"🇫🇷",name:"FR"},de:{flag:"🇩🇪",name:"DE"}};
   const t = T[lang]||T.en;
@@ -738,8 +738,11 @@ export default function CareerPulseApp({ user, onSignOut }) {
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0;}
         body{background:#0A0E1A;}
-        @keyframes bounce{0%,80%,100%{transform:translateY(0);}40%{transform:translateY(-8px);}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+        @keyframes slideDown{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}
+        @media(max-width:768px){.dnav{display:none!important;}.hmenu{display:flex!important;}}
+        @media(min-width:769px){.hmenu{display:none!important;}}
+
       `}</style>
       <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Plus Jakarta Sans',sans-serif",backgroundImage:`radial-gradient(ellipse at 20% 50%,#0D1E3522 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,#7C3AED11 0%,transparent 50%)`}}>
 
@@ -749,20 +752,23 @@ export default function CareerPulseApp({ user, onSignOut }) {
             <div style={{width:30,height:30,borderRadius:8,background:`linear-gradient(135deg,${C.accent2},${C.accent})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,boxShadow:`0 4px 16px ${C.accent}44`}}>⚡</div>
             <span style={{fontSize:17,fontWeight:800,color:C.text,letterSpacing:-0.5}}>Career<span style={{color:C.accent}}>Pulse</span></span>
           </div>
-          <div style={{display:"flex",gap:2,flexWrap:"wrap",justifyContent:"center"}}>
+          <div className="dnav" style={{display:"flex",gap:2,flexWrap:"wrap",justifyContent:"center"}}>
             {tabs.map(t=>(<button key={t.k} onClick={()=>setTab(t.k)} style={{padding:"6px 10px",borderRadius:8,border:"none",cursor:"pointer",background:tab===t.k?`${C.accent}18`:"transparent",color:tab===t.k?C.accent:C.muted,fontSize:11,fontWeight:tab===t.k?700:500,borderBottom:tab===t.k?`2px solid ${C.accent}`:"2px solid transparent",transition:"all 0.2s",whiteSpace:"nowrap"}}><span style={{marginRight:3}}>{t.i}</span>{t.l}</button>))}
-
-
-
-
           </div>
+          <button className="hmenu" onClick={()=>setMenuOpen(o=>!o)} style={{display:"none",background:"transparent",border:`1px solid ${C.cardBorder}`,borderRadius:8,color:C.text,padding:"6px 10px",cursor:"pointer",fontSize:16,marginLeft:"auto"}}>{menuOpen?"✕":"☰"}</button>
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             {user?.photoURL?<img src={user.photoURL} style={{width:30,height:30,borderRadius:"50%",objectFit:"cover"}} alt=""/>:<div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg,${C.accent2},${C.accent})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"#fff"}}>{(user?.displayName||user?.email||"?")[0].toUpperCase()}</div>}
             <select value={lang} onChange={e=>setLang(e.target.value)} style={{background:"#0D1525",border:`1px solid ${C.cardBorder}`,color:C.text,borderRadius:8,padding:"4px 8px",fontSize:11,cursor:"pointer"}}>{Object.entries(LANGS).map(([k,v])=>(<option key={k} value={k}>{v.flag} {v.name}</option>))}</select>
             <button onClick={onSignOut} style={{background:"transparent",border:`1px solid ${C.danger}44`,color:C.danger,borderRadius:8,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:600}}>{t.signout}</button>
           </div>
         </div>
-        <div style={{maxWidth:940,margin:"0 auto",padding:"28px 20px"}}>
+
+
+
+        {menuOpen&&(<div style={{background:"#0D1525",borderBottom:`1px solid ${C.cardBorder}`,padding:"12px 16px",display:"flex",flexDirection:"column",gap:4,animation:"slideDown 0.2s ease",zIndex:99,position:"relative"}}>
+          {tabs.map(t=>(<button key={t.k} onClick={()=>{setTab(t.k);setMenuOpen(false);}} style={{padding:"10px 14px",borderRadius:8,border:"none",cursor:"pointer",background:tab===t.k?`${C.accent}18`:"transparent",color:tab===t.k?C.accent:C.muted,fontSize:13,fontWeight:tab===t.k?700:500,textAlign:"left",width:"100%"}}><span style={{marginRight:8}}>{t.i}</span>{t.l}</button>))}
+        </div>)}
+        <div className="main-pad" style={{maxWidth:940,margin:"0 auto",padding:"28px 20px"}}>
           <div key={tab} style={{animation:"fadeUp 0.4s ease"}}>
             {tab==="Dashboard"       && <Dashboard setTab={setTab} deadlineJobs={deadlineJobs} lang={lang}/>}
             {tab==="Resume AI"       && <ResumeAI/>}
